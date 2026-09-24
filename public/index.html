@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spearo PT</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fa;color:#15202b}
+header{background:linear-gradient(135deg,#7b2cbf,#ff7a00);color:#fff;padding:22px 18px}
+h1{margin:0;font-size:30px}header p{margin:5px 0 0;opacity:.9}.wrap{max-width:1100px;margin:auto;padding:16px}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 5px 20px #0000000d}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.spot{border:1px solid #dce3ea;border-radius:14px;padding:13px;background:#fff;text-align:left;cursor:pointer}
+.spot:hover{border-color:#7b2cbf}.name{font-weight:800}.score{font-size:20px;font-weight:900;margin:4px 0}.mini{font-size:12px;color:#64748b}
+#details{min-height:140px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.metric{background:#f6f8fa;border-radius:12px;padding:10px}.metric small{color:#64748b}.metric b{font-size:16px}
+.status{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee}
+.warn{font-size:12px;color:#64748b;margin-top:12px}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>🎯 Spearo PT</h1><p>Condições para pesca submarina — Foz do Douro → Póvoa</p></div></header>
+<main class="wrap">
+<section class="card">
+<h2>📍 Escolhe o spot</h2>
+<div id="spots" class="grid"></div>
+</section>
+<section class="card" id="details"><h2>Seleciona um spot</h2><p class="mini">Os dados reais aparecem aqui quando o backend estiver configurado.</p></section>
+</main>
+<script>
+const spots=[
+["Foz do Douro","porto",41.148,-8.675],["Castelo do Queijo","porto",41.169,-8.689],
+["Matosinhos","porto",41.182,-8.705],["Leça da Palmeira","porto",41.190,-8.704],
+["Marreco","porto",41.235,-8.724],["Perafita","porto",41.225,-8.716],
+["Angeiras","porto",41.265,-8.722],["Labruge","porto",41.280,-8.716],
+["Mindelo","porto",41.316,-8.724],["Azurara","porto",41.337,-8.741],
+["Vila do Conde","porto",41.353,-8.744],["Póvoa de Varzim","porto",41.381,-8.765]
+];
+const el=document.querySelector("#spots"), details=document.querySelector("#details");
+spots.forEach(s=>{
+ const b=document.createElement("button"); b.className="spot";
+ b.innerHTML=`<div class="name">📍 ${s[0]}</div><div class="score">—</div><div class="mini">A carregar dados...</div>`;
+ b.onclick=()=>loadSpot(s,b); el.appendChild(b);
+});
+async function loadSpot(s,b){
+ details.innerHTML=`<h2>📍 ${s[0]}</h2><p>A carregar condições reais...</p>`;
+ try{
+   const r=await fetch(`/api/spot?lat=${s[2]}&lon=${s[3]}&name=${encodeURIComponent(s[0])}`);
+   if(!r.ok) throw new Error("API indisponível");
+   const d=await r.json();
+   const score=d.score==null?"—":d.score.toFixed(1)+"/10";
+   b.querySelector(".score").textContent=(d.statusEmoji||"🟡")+" "+score;
+   b.querySelector(".mini").textContent=d.summary||"Dados recebidos";
+   details.innerHTML=`
+    <h2>📍 ${s[0]} <span class="status">${d.statusEmoji||"🟡"} ${d.status||"Sem classificação"}</span></h2>
+    <div class="metrics">
+      <div class="metric"><small>🌊 Onda</small><br><b>${d.wave||"—"}</b></div>
+      <div class="metric"><small>⏱️ Período</small><br><b>${d.period||"—"}</b></div>
+      <div class="metric"><small>🧭 Direção</small><br><b>${d.direction||"—"}</b></div>
+      <div class="metric"><small>🌡️ Água</small><br><b>${d.waterTemp||"—"}</b></div>
+      <div class="metric"><small>💨 Vento</small><br><b>${d.wind||"—"}</b></div>
+      <div class="metric"><small>💨 Rajadas</small><br><b>${d.gust||"—"}</b></div>
+      <div class="metric"><small>⚡ Energia</small><br><b>${d.energy||"—"}</b></div>
+      <div class="metric"><small>👁️ Visibilidade</small><br><b>${d.visibility||"Não confirmada"}</b></div>
+    </div>
+    <p class="warn">${d.note||""}</p>`;
+ }catch(e){
+   details.innerHTML=`<h2>📍 ${s[0]}</h2><p>O frontend está pronto, mas o backend ainda não está ligado neste endereço.</p>`;
+ }
+}
+</script>
+</body>
+</html>
