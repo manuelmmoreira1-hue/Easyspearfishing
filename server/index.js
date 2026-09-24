@@ -9,21 +9,21 @@ const { URL } = require('url');
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const TZ = 'Europe/Lisbon';
-const VERSION = '3.1.2';
+const VERSION = '3.1.3';
 
 const spots = {
-  'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', localProfile: 'estuário/foz', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Castelo do Queijo': { lat: 41.169, lon: -8.689, exposure: 285, protection: 'aberta a W/NW', localProfile: 'costa rochosa', camera: { label: 'Beachcam Matosinhos', url: 'https://back-office.beachcam.pt/livecams/praia-de-matosinhos/' } },
-  'Matosinhos': { lat: 41.182, lon: -8.705, exposure: 290, protection: 'aberta a W/NW', localProfile: 'praia/porto', camera: { label: 'Beachcam Matosinhos', url: 'https://back-office.beachcam.pt/livecams/praia-de-matosinhos/' } },
-  'Leça da Palmeira': { lat: 41.190, lon: -8.704, exposure: 295, protection: 'aberta a W/NW', localProfile: 'molhe/costa exposta', camera: { label: 'Beachcam Leça da Palmeira', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira/' }, camera2: { label: 'Beachcam Leça panorâmica / Aterro', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira-panoraminca-aterro/' }, ipmaCamera: { label: 'IPMA Livecam Leça', url: 'https://www.ipma.pt/pt/maritima/costeira/index.jsp?idLocal=2&selLocal=2' } },
-  'Marreco': { lat: 41.235, lon: -8.724, exposure: 300, protection: 'aberta a W/NW', localProfile: 'costa aberta', camera: { label: 'Beachcam Leça / Matosinhos', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Perafita': { lat: 41.225, lon: -8.716, exposure: 300, protection: 'aberta a W/NW', localProfile: 'costa aberta', camera: { label: 'Beachcam Leça da Palmeira', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira/' } },
-  'Angeiras': { lat: 41.265, lon: -8.722, exposure: 300, protection: 'aberta a W/NW', localProfile: 'costa rochosa/praia', camera: { label: 'Beachcam Leça / Matosinhos', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Labruge': { lat: 41.280, lon: -8.716, exposure: 305, protection: 'aberta a W/NW', localProfile: 'costa aberta', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Mindelo': { lat: 41.316, lon: -8.724, exposure: 305, protection: 'aberta a W/NW', localProfile: 'costa rochosa/praia', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Azurara': { lat: 41.337, lon: -8.741, exposure: 300, protection: 'aberta a W/NW', localProfile: 'foz do Ave/estuário', camera: { label: 'Beachcam Caxinas', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Vila do Conde': { lat: 41.353, lon: -8.744, exposure: 300, protection: 'aberta a W/NW', localProfile: 'foz do Ave/urbana', camera: { label: 'Beachcam Caxinas', url: 'https://back-office.beachcam.pt/livecams/' } },
-  'Póvoa de Varzim': { lat: 41.381, lon: -8.765, exposure: 290, protection: 'aberta a W/NW', localProfile: 'costa aberta/porto', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } }
+  'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Castelo do Queijo': { lat: 41.169, lon: -8.689, exposure: 285, protection: 'aberta a W/NW', camera: { label: 'Beachcam Matosinhos', url: 'https://back-office.beachcam.pt/livecams/praia-de-matosinhos/' } },
+  'Matosinhos': { lat: 41.182, lon: -8.705, exposure: 290, protection: 'aberta a W/NW', camera: { label: 'Beachcam Matosinhos', url: 'https://back-office.beachcam.pt/livecams/praia-de-matosinhos/' } },
+  'Leça da Palmeira': { lat: 41.190, lon: -8.704, exposure: 295, protection: 'aberta a W/NW', camera: { label: 'Beachcam Leça da Palmeira', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira/' }, camera2: { label: 'Beachcam Leça panorâmica / Aterro', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira-panoraminca-aterro/' }, ipmaCamera: { label: 'IPMA Livecam Leça', url: 'https://www.ipma.pt/pt/maritima/costeira/index.jsp?idLocal=2&selLocal=2' } },
+  'Marreco': { lat: 41.235, lon: -8.724, exposure: 300, protection: 'aberta a W/NW', camera: { label: 'Beachcam Leça / Matosinhos', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Perafita': { lat: 41.225, lon: -8.716, exposure: 300, protection: 'aberta a W/NW', camera: { label: 'Beachcam Leça da Palmeira', url: 'https://back-office.beachcam.pt/livecams/leca-da-palmeira/' } },
+  'Angeiras': { lat: 41.265, lon: -8.722, exposure: 300, protection: 'aberta a W/NW', camera: { label: 'Beachcam Leça / Matosinhos', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Labruge': { lat: 41.280, lon: -8.716, exposure: 305, protection: 'aberta a W/NW', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Mindelo': { lat: 41.316, lon: -8.724, exposure: 305, protection: 'aberta a W/NW', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Azurara': { lat: 41.337, lon: -8.741, exposure: 300, protection: 'aberta a W/NW', camera: { label: 'Beachcam Caxinas', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Vila do Conde': { lat: 41.353, lon: -8.744, exposure: 300, protection: 'aberta a W/NW', camera: { label: 'Beachcam Caxinas', url: 'https://back-office.beachcam.pt/livecams/' } },
+  'Póvoa de Varzim': { lat: 41.381, lon: -8.765, exposure: 290, protection: 'aberta a W/NW', camera: { label: 'Beachcam Caxinas / Vila do Conde', url: 'https://back-office.beachcam.pt/livecams/' } }
 };
 
 function json(res, status, data) {
@@ -142,118 +142,40 @@ function batchUrl(base, params){
 }
 
 async function fetchAllSources(){
-  const marineBase='https://marine-api.open-meteo.com/v1/marine';
-  const weatherBase='https://api.open-meteo.com/v1/forecast';
-  const marineHourly='wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_period';
-  const weatherHourly='wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover';
-
-  // Always obtain one dependable Best Match forecast first. This is the safety net:
-  // optional model comparisons must never make the whole application fail.
-  const primaryCalls=[
-    {kind:'marine',model:'best_match',label:'Marine Best Match',weight:1,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:marineHourly,current:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period',past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea'})},
-    {kind:'weather',model:'best_match',label:'Weather Best Match',weight:1,url:batchUrl(weatherBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:weatherHourly,current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',daily:'sunrise,sunset,precipitation_probability_max',past_days:'3',forecast_days:'7',timezone:TZ})},
-    {kind:'marineAux',model:'best_match',label:'Marine SST/Tide/Current',weight:1,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',current:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea'})},
-    {kind:'ipma',model:'ipma',label:'IPMA',weight:1,url:'https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day0.json'}
-  ];
-  const primary=await Promise.all(primaryCalls.map(c=>fetchJson(c.url,c.kind==='ipma'?8000:10000).then(value=>({ok:true,...c,value})).catch(error=>({ok:false,...c,error}))));
-  const marinePrimary=primary.find(x=>x.kind==='marine'&&x.ok);
-  const weatherPrimary=primary.find(x=>x.kind==='weather'&&x.ok);
-  if(!marinePrimary || !weatherPrimary){
-    const bad=primary.filter(x=>!x.ok).map(x=>`${x.label}: ${x.error?.message||'erro'}`).join('; ');
-    const err=new Error(`Fontes principais indisponíveis — ${bad}`); err.statusCode=502; throw err;
+  const marineUrl=batchUrl('https://marine-api.open-meteo.com/v1/marine',{
+    latitude:LATITUDES, longitude:LONGITUDES,
+    hourly:'wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',
+    current:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',
+    past_days:'3', forecast_days:'7', timezone:TZ, cell_selection:'sea'
+  });
+  const weatherUrl=batchUrl('https://api.open-meteo.com/v1/forecast',{
+    latitude:LATITUDES, longitude:LONGITUDES,
+    hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover',
+    current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',
+    daily:'sunrise,sunset,precipitation_probability_max',
+    past_days:'3', forecast_days:'7', timezone:TZ
+  });
+  const ipmaUrl='https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day0.json';
+  const results=await Promise.allSettled([
+    fetchJson(marineUrl,18000),
+    fetchJson(weatherUrl,18000),
+    fetchJson(ipmaUrl,12000)
+  ]);
+  const marine=results[0], weather=results[1], ipma=results[2];
+  if(marine.status!=='fulfilled' || weather.status!=='fulfilled'){
+    const err=new Error(`Fontes externas indisponíveis — Marine: ${marine.status==='fulfilled'?'OK':marine.reason?.message||'erro'}; Weather: ${weather.status==='fulfilled'?'OK':weather.reason?.message||'erro'}`);
+    err.statusCode=502; throw err;
   }
-
-  // Optional model comparison. It is deliberately non-blocking for reliability:
-  // if a provider/model is slow or temporarily unavailable, Best Match still serves the site.
-  const optional=[
-    ['marine','dwd_ewam','DWD EWAM',0.45,4,marineBase,marineHourly],
-    ['marine','ecmwf_wam','ECMWF WAM',0.35,7,marineBase,marineHourly],
-    ['marine','meteofrance_wave','Météo-France MFWAM',0.20,7,marineBase,marineHourly],
-    ['weather','icon_eu','DWD ICON-EU',0.60,5,weatherBase,weatherHourly],
-    ['weather','ecmwf_ifs','ECMWF IFS HRES',0.40,7,weatherBase,weatherHourly]
-  ];
-  const optionalResults=await Promise.all(optional.map(([kind,model,label,weight,days,base,hourly])=>{
-    const params={latitude:LATITUDES,longitude:LONGITUDES,hourly,past_days:'3',forecast_days:String(days),timezone:TZ,models:model};
-    if(kind==='marine') params.cell_selection='sea';
-    else { params.current='wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility'; params.daily='sunrise,sunset,precipitation_probability_max'; }
-    return fetchJson(batchUrl(base,params),6000).then(value=>({ok:true,kind,model,label,weight,value})).catch(error=>({ok:false,kind,model,label,weight,error}));
-  }));
-
-  const marine=[marinePrimary];
-  const weather=[weatherPrimary];
-  for(const r of optionalResults){
-    if(r.ok){
-      if(r.kind==='marine') marine.push(r); else weather.push(r);
-    }
-  }
-  const marineAux=primary.find(x=>x.kind==='marineAux'&&x.ok)?.value||null;
-  const ipma=primary.find(x=>x.kind==='ipma'&&x.ok)?.value||null;
-  return {
-    marine,weather,marineAux,ipma,
-    sourceStatus:[...primary,...optionalResults].map(x=>({label:x.label,kind:x.kind,model:x.model,ok:x.ok,error:x.ok?null:x.error?.message||'erro'}))
-  };
+  return {marine:marine.value, weather:weather.value, ipma:ipma.status==='fulfilled'?ipma.value:null};
 }
 
-function asLocationArray(value){ return Array.isArray(value)?value:[value]; }
-function payloadArray(value){ return Array.isArray(value)?value:[value]; }
-function findPayloadForSpot(value,spot,index){
-  const arr=payloadArray(value);
-  return arr.find(x=>Math.abs(Number(x.latitude)-spot.lat)<0.03 && Math.abs(Number(x.longitude)-spot.lon)<0.03) || arr[index] || null;
-}
-function nearestIndex(times,target,windowMinutes=90){
-  if(!Array.isArray(times)||!times.length)return -1;
-  const t=Date.parse(target); let best=-1,delta=Infinity;
-  for(let i=0;i<times.length;i++){
-    const d=Math.abs(Date.parse(times[i])-t); if(d<delta){delta=d;best=i;}
-  }
-  return delta<=windowMinutes*60000?best:-1;
-}
-function atTime(hourly,time,field){
-  const idx=nearestIndex(hourly?.time,time,90); return idx<0?null:finite(hourly?.[field]?.[idx]);
-}
-function circularMeanWeighted(values){
-  const ok=values.filter(x=>Number.isFinite(x.v)); if(!ok.length)return null;
-  let sx=0,sy=0,sw=0; for(const x of ok){const r=x.v*Math.PI/180;sx+=Math.cos(r)*x.w;sy+=Math.sin(r)*x.w;sw+=x.w;}
-  let d=Math.atan2(sy/sw,sx/sw)*180/Math.PI; if(d<0)d+=360; return d;
-}
-function weightedMean(values){
-  const ok=values.filter(x=>Number.isFinite(x.v)); if(!ok.length)return null; const sw=ok.reduce((a,x)=>a+x.w,0); return ok.reduce((a,x)=>a+x.v*x.w,0)/sw;
-}
-function spread(values){ const a=values.filter(Number.isFinite); return a.length>=2?Math.max(...a)-Math.min(...a):0; }
-function blendAt(modelPayloads, time, field){
-  const vals=modelPayloads.map(m=>({v:atTime(m.payload.hourly,time,field),w:m.weight})).filter(x=>Number.isFinite(x.v));
-  return {value:weightedMean(vals),spread:spread(vals.map(x=>x.v)),count:vals.length};
-}
-function blendDirAt(modelPayloads,time,field){
-  const vals=modelPayloads.map(m=>({v:atTime(m.payload.hourly,time,field),w:m.weight}));
-  return {value:circularMeanWeighted(vals),spread:directionSpread(vals.map(x=>x.v).filter(Number.isFinite)),count:vals.filter(x=>Number.isFinite(x.v)).length};
-}
-function directionSpread(values){
-  if(values.length<2)return 0; let max=0; for(let i=0;i<values.length;i++)for(let j=i+1;j<values.length;j++)max=Math.max(max,angleDiff(values[i],values[j])); return max;
-}
-function modelAtCurrent(modelPayloads,field){
-  const vals=modelPayloads.map(m=>({v:finite(m.payload.current?.[field]),w:m.weight})); return weightedMean(vals);
+function asLocationArray(payload){
+  if(Array.isArray(payload)) return payload;
+  return [payload];
 }
 
-function buildBlendedWeather(modelPayloads, primary){
-  const times=primary?.hourly?.time||[]; const hourly=[];
-  for(const time of times){
-    const wind=blendAt(modelPayloads,time,'wind_speed_10m'), gust=blendAt(modelPayloads,time,'wind_gusts_10m');
-    const dir=blendDirAt(modelPayloads,time,'wind_direction_10m');
-    hourly.push({time,wind:wind.value,windDirection:dir.value,gust:gust.value,visibility:atTime(primary.hourly,time,'visibility'),precipitationProbability:atTime(primary.hourly,time,'precipitation_probability'),precipitation:atTime(primary.hourly,time,'precipitation'),cloudCover:atTime(primary.hourly,time,'cloud_cover'),modelSpread:{wind:wind.spread,gust:gust.spread,windDirection:dir.spread}});
-  }
-  return {hourly,daily:primary.daily||{},current:{time:primary.current?.time,wind:modelAtCurrent(modelPayloads,'wind_speed_10m'),windDirection:modelAtCurrent(modelPayloads,'wind_direction_10m'),gust:modelAtCurrent(modelPayloads,'wind_gusts_10m'),visibility:finite(primary.current?.visibility)}};
-}
-
-function buildBlendedMarine(modelPayloads, primary){
-  const times=primary?.hourly?.time||[]; const hourly=[];
-  for(const time of times){
-    const wave=blendAt(modelPayloads,time,'wave_height'), period=blendAt(modelPayloads,time,'wave_period'), peak=blendAt(modelPayloads,time,'wave_peak_period');
-    const swell=blendAt(modelPayloads,time,'swell_wave_height'), swellPeriod=blendAt(modelPayloads,time,'swell_wave_period');
-    const dir=blendDirAt(modelPayloads,time,'wave_direction'), swellDir=blendDirAt(modelPayloads,time,'swell_wave_direction');
-    hourly.push({time,wave:wave.value,waveDirection:dir.value,period:period.value,peakPeriod:peak.value,swell:swell.value,swellDirection:swellDir.value,swellPeriod:swellPeriod.value,modelSpread:{wave:wave.spread,period:period.spread,waveDirection:dir.spread,swell:swell.spread,swellDirection:swellDir.spread},modelCount:Math.min(wave.count,period.count)});
-  }
-  return {hourly,current:{time:primary.current?.time,wave:modelAtCurrent(modelPayloads,'wave_height'),waveDirection:circularMeanWeighted(modelPayloads.map(m=>({v:finite(m.payload.current?.wave_direction),w:m.weight}))),period:modelAtCurrent(modelPayloads,'wave_period'),swell:modelAtCurrent(modelPayloads,'swell_wave_height'),swellDirection:circularMeanWeighted(modelPayloads.map(m=>({v:finite(m.payload.current?.swell_wave_direction),w:m.weight}))),swellPeriod:modelAtCurrent(modelPayloads,'swell_wave_period')}};
+function findLocationPayload(arr, spot, index){
+  return arr.find(x => Math.abs(Number(x.latitude)-spot.lat)<0.02 && Math.abs(Number(x.longitude)-spot.lon)<0.02) || arr[index] || null;
 }
 
 async function getAllForecast(){
@@ -262,125 +184,51 @@ async function getAllForecast(){
   if(forecastInFlight) return forecastInFlight;
   forecastInFlight=(async()=>{
     const src=await fetchAllSources();
-    const marineModelsBySpot=SPOT_LIST.map((spot,i)=>src.marine.map(m=>({label:m.label,model:m.model,weight:m.weight,payload:findPayloadForSpot(m.value,spot,i)})).filter(x=>x.payload));
-    const weatherModelsBySpot=SPOT_LIST.map((spot,i)=>src.weather.map(m=>({label:m.label,model:m.model,weight:m.weight,payload:findPayloadForSpot(m.value,spot,i)})).filter(x=>x.payload));
+    const marineArr=asLocationArray(src.marine);
+    const weatherArr=asLocationArray(src.weather);
     const spotsOut=SPOT_LIST.map((spot,i)=>{
-      const mm=marineModelsBySpot[i], ww=weatherModelsBySpot[i];
-      const primaryMarine=mm.find(x=>x.model==='best_match')||mm.find(x=>x.model==='dwd_ewam')||mm[0]; const primaryWeather=ww.find(x=>x.model==='best_match')||ww.find(x=>x.model==='icon_eu')||ww[0];
-      const marine=buildBlendedMarine(mm,primaryMarine.payload); const weather=buildBlendedWeather(ww,primaryWeather.payload);
-      const aux=findPayloadForSpot(src.marineAux,spot,i);
-      return buildSpotDataFromBlended(spot.name,spot,marine,weather,src.ipma,mm,ww,aux);
+      const m=findLocationPayload(marineArr,spot,i);
+      const w=findLocationPayload(weatherArr,spot,i);
+      if(!m || !w) throw Object.assign(new Error(`Não foi possível associar os dados ao spot ${spot.name}`),{statusCode:502});
+      return buildSpotDataFromPayload(spot.name,spot,m,w,src.ipma);
     });
-    const data={version:VERSION,updatedAt:new Date().toISOString(),count:spotsOut.length,modelMix:{marine:[['DWD EWAM',0.45],['ECMWF WAM',0.35],['Météo-France MFWAM',0.20]],weather:[['DWD ICON-EU',0.60],['ECMWF IFS',0.40]]},sourceStatus:src.sourceStatus,spots:spotsOut};
-    forecastCache={time:Date.now(),data}; return data;
+    const data={version:VERSION,updatedAt:new Date().toISOString(),count:spotsOut.length,spots:spotsOut};
+    forecastCache={time:Date.now(),data};
+    return data;
   })().finally(()=>{forecastInFlight=null;});
   return forecastInFlight;
 }
 
-function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMarine){
-  const mh=Array.isArray(m.hourly)?m.hourly:[];
-  const wh=Array.isArray(w.hourly)?w.hourly:[];
-  const n=Math.min(mh.length,wh.length);
-  const hourly=[];
-  const auxTimes=auxMarine?.hourly?.time||[];
+function buildSpotDataFromPayload(name,s,m,w,ip){
+  const {lat,lon}=s;
+  const mh=m?.hourly||{}; const wh=w?.hourly||{}; if(!m || !w) throw Object.assign(new Error('Dados completos de Marine + Weather não disponíveis'),{statusCode:502}); const n=Math.min((mh.time||[]).length,(wh.time||[]).length); const hourly=[];
   for(let i=0;i<n;i++){
-    const time=mh[i]?.time;
-    const wave=finite(mh[i]?.wave), period=finite(mh[i]?.period), wind=finite(wh[i]?.wind), gust=finite(wh[i]?.gust), energy=relativeEnergy(wave,period);
-    const pseudoMarine={wave_height:mh.map(x=>x.wave),wave_period:mh.map(x=>x.period),wave_direction:mh.map(x=>x.waveDirection)};
-    const pseudoWeather={wind_speed_10m:wh.map(x=>x.wind),wind_direction_10m:wh.map(x=>x.windDirection),precipitation:wh.map(x=>x.precipitation)};
-    const vis=estimateVisibilityAt(i,pseudoMarine,pseudoWeather,s);
-    const ss=baseSpearoScore({wave,period,wind,gust,energy,swellDirection:finite(mh[i]?.swellDirection),waveDirection:finite(mh[i]?.waveDirection),spot:s,current:null,waterTemp:null,visibilityScore:vis.score});
-    const auxIdx=nearestIndex(auxTimes,time,90);
-    hourly.push({
-      time,wave,waveDirection:finite(mh[i]?.waveDirection),period,peakPeriod:finite(mh[i]?.peakPeriod),
-      swell:finite(mh[i]?.swell),swellDirection:finite(mh[i]?.swellDirection),swellPeriod:finite(mh[i]?.swellPeriod),
-      wind,windDirection:finite(wh[i]?.windDirection),gust,atmosphericVisibility:finite(wh[i]?.visibility),
-      precipitationProbability:finite(wh[i]?.precipitationProbability),precipitation:finite(wh[i]?.precipitation),cloudCover:finite(wh[i]?.cloudCover),
-      waterTemp:auxIdx>=0?finite(auxMarine?.hourly?.sea_surface_temperature?.[auxIdx]):null,
-      tideLevel:auxIdx>=0?finite(auxMarine?.hourly?.sea_level_height_msl?.[auxIdx]):null,
-      current:auxIdx>=0?finite(auxMarine?.hourly?.ocean_current_velocity?.[auxIdx]):null,
-      currentDirection:auxIdx>=0?finite(auxMarine?.hourly?.ocean_current_direction?.[auxIdx]):null,
-      energy,visibility:vis,score:ss?.score??null,daylight:daylightForTime(time,w.daily||{}),
-      modelSpread:{...(mh[i]?.modelSpread||{}),...(wh[i]?.modelSpread||{})}
-    });
+    const wave=finite(mh.wave_height?.[i]),period=finite(mh.wave_period?.[i]),wind=finite(wh.wind_speed_10m?.[i]),gust=finite(wh.wind_gusts_10m?.[i]),energy=relativeEnergy(wave,period); const vis=estimateVisibilityAt(i,mh,wh,s); const ss=baseSpearoScore({wave,period,wind,gust,energy,swellDirection:finite(mh.swell_wave_direction?.[i]),waveDirection:finite(mh.wave_direction?.[i]),spot:s,current:finite(mh.ocean_current_velocity?.[i]),waterTemp:finite(mh.sea_surface_temperature?.[i]),visibilityScore:vis.score}); const time=mh.time[i];
+    hourly.push({time,wave,waveDirection:finite(mh.wave_direction?.[i]),period,peakPeriod:finite(mh.wave_peak_period?.[i]),swell:finite(mh.swell_wave_height?.[i]),swellDirection:finite(mh.swell_wave_direction?.[i]),swellPeriod:finite(mh.swell_wave_period?.[i]),wind,windDirection:finite(wh.wind_direction_10m?.[i]),gust,atmosphericVisibility:finite(wh.visibility?.[i]),precipitationProbability:finite(wh.precipitation_probability?.[i]),precipitation:finite(wh.precipitation?.[i]),cloudCover:finite(wh.cloud_cover?.[i]),waterTemp:finite(mh.sea_surface_temperature?.[i]),tideLevel:finite(mh.sea_level_height_msl?.[i]),current:finite(mh.ocean_current_velocity?.[i]),currentDirection:finite(mh.ocean_current_direction?.[i]),energy,visibility:vis,score:ss?.score??null,daylight:daylightForTime(time,w.daily||{})});
   }
-  const currentTime=m.current?.time||hourly[0]?.time;
-  const currentH=hourly.find(h=>h.time===currentTime)||hourly[0]||null;
-  const auxCurrentIdx=nearestIndex(auxTimes,currentTime,90);
-  const current={
-    wave:finite(currentH?.wave), waveDirection:finite(currentH?.waveDirection), period:finite(currentH?.period),
-    swell:finite(currentH?.swell),swellDirection:finite(currentH?.swellDirection),swellPeriod:finite(currentH?.swellPeriod),
-    waterTemp:auxCurrentIdx>=0?finite(auxMarine?.hourly?.sea_surface_temperature?.[auxCurrentIdx]):null,
-    tideLevel:auxCurrentIdx>=0?finite(auxMarine?.hourly?.sea_level_height_msl?.[auxCurrentIdx]):null,
-    current:auxCurrentIdx>=0?finite(auxMarine?.hourly?.ocean_current_velocity?.[auxCurrentIdx]):null,
-    currentDirection:auxCurrentIdx>=0?finite(auxMarine?.hourly?.ocean_current_direction?.[auxCurrentIdx]):null,
-    wind:finite(currentH?.wind),windDirection:finite(currentH?.windDirection),gust:finite(currentH?.gust),atmosphericVisibility:finite(currentH?.visibility)
-  };
-  const currentVis=currentH?.visibility||null;
-  const energy=relativeEnergy(current.wave,current.period);
-  const scoreData=baseSpearoScore({...current,energy,spot:s,visibilityScore:currentVis?.score});
-  const [statusEmoji,status,statusText]=classify(scoreData?.score??null);
-  const today=(w.daily?.time||[])[0]||(hourly[0]?.time||'').slice(0,10);
-  const future=hourly.filter(h=>h.time&&new Date(h.time)>=new Date()&&h.score!=null);
-  const daylightFuture=future.filter(h=>h.daylight);
-  const best=daylightFuture.slice().sort((a,b)=>b.score-a.score)[0]||null;
-  const bestDayDate=best?.time?.slice(0,10)||null;
-  const bestDayLabel=bestDayDate?dayLabel(bestDayDate,today):null;
-  const bestWindow=best?`${bestDayLabel} ${best.time.slice(11,16)} — ${best.score}/10`:'Não calculada';
-  let window=null;
-  if(best){
-    const idx=hourly.findIndex(h=>h.time===best.time);
-    const candidate=hourly.slice(Math.max(0,idx-1),idx+2).filter(h=>h.daylight&&h.score!=null);
-    if(candidate.length>=2) window={start:candidate[0].time.slice(11,16),end:candidate[candidate.length-1].time.slice(11,16),score:Number((candidate.reduce((a,h)=>a+h.score,0)/candidate.length).toFixed(1))};
-  }
-  let ipmaRef=null,modelAgreement='Não disponível';
-  const expectedMarine=3, expectedWeather=2;
-  if(ip){
-    const rows=Array.isArray(ip)?ip:(ip.data||[]),ref=rows.find(x=>Number(x.globalIdLocal)===1130826);
-    if(ref){
-      ipmaRef={waveMin:finite(ref.totalSeaMin),waveMax:finite(ref.totalSeaMax),periodMin:finite(ref.wavePeriodMin),periodMax:finite(ref.wavePeriodMax),direction:ref.predWaveDir,sstMin:finite(ref.sstMin),sstMax:finite(ref.sstMax),update:ip.dataUpdate};
-      const waveOk=Number.isFinite(current.wave)&&current.wave>=ipmaRef.waveMin-.25&&current.wave<=ipmaRef.waveMax+.25;
-      const periodOk=Number.isFinite(current.period)&&current.period>=ipmaRef.periodMin-1&&current.period<=ipmaRef.periodMax+1;
-      modelAgreement=waveOk&&periodOk?'Boa concordância':'Concordância parcial';
-    }
-  }
-  const modelSpread={
-    wave:spread(marineModels.map(x=>atTime(x.payload?.hourly,currentH?.time||currentTime,'wave_height'))),
-    wind:spread(weatherModels.map(x=>atTime(x.payload?.hourly,currentH?.time||currentTime,'wind_speed_10m'))),
-    waveDirection:directionSpread(marineModels.map(x=>atTime(x.payload?.hourly,currentH?.time||currentTime,'wave_direction')).filter(Number.isFinite))
-  };
-  const waveSpread=Number.isFinite(modelSpread.wave)?modelSpread.wave:null;
-  const windSpread=Number.isFinite(modelSpread.wind)?modelSpread.wind:null;
-  let agreementConfidence='baixa';
-  if(marineModels.length>=2 && weatherModels.length>=2 && Number.isFinite(waveSpread) && Number.isFinite(windSpread)){
-    if(waveSpread<=0.20 && windSpread<=2.5) agreementConfidence='alta';
-    else if(waveSpread<=0.40 && windSpread<=5) agreementConfidence='média';
-  }
-  if(modelAgreement==='Não disponível' && agreementConfidence!=='baixa') modelAgreement=agreementConfidence==='alta'?'Boa concordância entre modelos':'Concordância moderada entre modelos';
-  const daily=(w.daily?.time||[]).filter(date=>date>=today).slice(0,7).map(date=>{
-    const rows=hourly.filter(h=>h.time?.startsWith(date)&&h.score!=null&&h.daylight);
-    if(!rows.length)return {date,label:dayLabel(date,today),bestScore:null,bestTime:null,minWave:null,maxWave:null,minWind:null,maxWind:null,minVisibility:null,maxVisibility:null,trend:null};
-    const bd=rows.slice().sort((a,b)=>b.score-a.score)[0],vv=rows.map(r=>r.visibility?.meters).filter(Number.isFinite);
-    const waves=rows.map(r=>r.wave).filter(Number.isFinite),winds=rows.map(r=>r.wind).filter(Number.isFinite);
-    return {date,label:dayLabel(date,today),bestScore:bd.score,bestTime:bd.time.slice(11,16),minWave:waves.length?Math.min(...waves):null,maxWave:waves.length?Math.max(...waves):null,minWind:winds.length?Math.min(...winds):null,maxWind:winds.length?Math.max(...winds):null,minVisibility:vv.length?Math.min(...vv):null,maxVisibility:vv.length?Math.max(...vv):null,trend:bd.visibility?.trend||null};
-  });
-  const cameraLinks=[s.camera,s.camera2,s.ipmaCamera].filter(Boolean);
-  const satellite=satelliteInfo();
-  return {
-    version:VERSION,name,lat:s.lat,lon:s.lon,exposure:s.exposure,exposureText:s.protection,localProfile:s.localProfile,
-    score:scoreData?.score??null,scoreVersion:'Spearo Score 6.0 — multi-model + exposição local + confiança',scoreComponents:scoreData?.components||[],scoreReasons:scoreData?{positives:scoreData.positives,negatives:scoreData.negatives}:{positives:[],negatives:[]},
-    status,statusEmoji,statusText,decision:scoreData?.score>=8.5?'SIM':scoreData?.score>=7?'TALVEZ':scoreData?.score>=5?'EXIGENTE':'NÃO',
-    wave:current.wave!=null?`${fmt(current.wave)} m`:'—',period:current.period!=null?`${fmt(current.period)} s`:'—',direction:degToCompass(current.waveDirection),waterTemp:current.waterTemp!=null?`${fmt(current.waterTemp)} °C`:'—',
-    wind:current.wind!=null?`${fmt(current.wind)} km/h ${degToCompass(current.windDirection)}`:'—',gust:current.gust!=null?`${fmt(current.gust)} km/h`:'—',energy:energy!=null?`~${fmt(energy)} (indicador relativo)`:'—',
-    atmosphericVisibility:current.atmosphericVisibility!=null?`${fmt(current.atmosphericVisibility/1000)} km`:'Não disponível',underwaterVisibility:currentVis?`${currentVis.label} provável`:'Não disponível',visibility:currentVis,
-    swell:current.swell!=null?`${fmt(current.swell)} m`:'—',swellDirection:degToCompass(current.swellDirection),swellPeriod:current.swellPeriod!=null?`${fmt(current.swellPeriod)} s`:'—',
-    tideLevel:current.tideLevel!=null?`${fmt(current.tideLevel,2)} m MSL*`:'—',currentSpeed:current.current!=null?`${fmt(current.current)} km/h`:'—',currentDirection:degToCompass(current.currentDirection),
-    bestWindow,bestWindowShort:best?`${bestDayLabel} ${best.time.slice(11,16)} — ${best.score}/10`:'—',bestWindowTime:best?.time||'',window,
-    hourly,daily,modelCount:{marine:marineModels.length,weather:weatherModels.length},modelSpread,modelAgreement,ipmaReference:ipmaRef,cameraLinks,satellite,
-    sourceStatus:{marine:marineModels.map(x=>x.label),weather:weatherModels.map(x=>x.label)},
-    note:'Previsão multi-modelo com exposição local do spot. A altura de onda continua limitada pela resolução dos modelos; a visibilidade subaquática é uma estimativa heurística e não uma medição direta.'
-  };
+  const future=hourly.filter(h=>new Date(h.time)>=new Date() && h.score!=null); const currentIndex=Math.max(0,hourly.findIndex(h=>h.time>=(m.current?.time||hourly.find(h=>h.time)?.time))); const ci=currentIndex>=0?currentIndex:Math.min(72,hourly.length-1); const currentH=hourly[ci]||hourly.find(h=>h.daylight)||hourly[0];
+  const current={wave:finite(m.current?.wave_height),waveDirection:finite(m.current?.wave_direction),period:finite(m.current?.wave_period),swell:finite(m.current?.swell_wave_height),swellDirection:finite(m.current?.swell_wave_direction),swellPeriod:finite(m.current?.swell_wave_period),waterTemp:finite(m.current?.sea_surface_temperature),tideLevel:finite(m.current?.sea_level_height_msl),current:finite(m.current?.ocean_current_velocity),currentDirection:finite(m.current?.ocean_current_direction),wind:finite(w.current?.wind_speed_10m),windDirection:finite(w.current?.wind_direction_10m),gust:finite(w.current?.wind_gusts_10m),atmosphericVisibility:finite(w.current?.visibility)};
+  const currentVis=currentH?.visibility||estimateVisibilityAt(ci,mh,wh,s); const energy=relativeEnergy(current.wave,current.period); const scoreData=baseSpearoScore({...current,energy,spot:s,visibilityScore:currentVis.score}); const [statusEmoji,status,statusText]=classify(scoreData?.score??null);
+  const today=(w.daily?.time||[])[0]||(hourly[0]?.time||'').slice(0,10); const daylightFuture=future.filter(h=>h.daylight&&h.score!=null); const best=daylightFuture.slice().sort((a,b)=>b.score-a.score)[0]||null; const bestDayDate=best?.time?.slice(0,10)||null; const bestDayLabel=bestDayDate?dayLabel(bestDayDate,today):null; const bestWindow=best?`${bestDayLabel} ${best.time.slice(11,16)} — ${best.score}/10`:'Não calculada';
+  let window=null;if(best){const idx=hourly.findIndex(h=>h.time===best.time);const candidate=hourly.slice(Math.max(0,idx-1),idx+2).filter(h=>h.daylight&&h.score!=null);if(candidate.length>=2){window={start:candidate[0].time.slice(11,16),end:candidate[candidate.length-1].time.slice(11,16),score:Number((candidate.reduce((a,h)=>a+h.score,0)/candidate.length).toFixed(1))};}}
+  let ipmaRef=null,modelAgreement='Não disponível'; if(ip){const ipRows=Array.isArray(ip)?ip:(ip.data||[]); const ref=ipRows.find(x=>Number(x.globalIdLocal)===1130826);if(ref){ipmaRef={waveMin:finite(ref.totalSeaMin),waveMax:finite(ref.totalSeaMax),periodMin:finite(ref.wavePeriodMin),periodMax:finite(ref.wavePeriodMax),direction:ref.predWaveDir,sstMin:finite(ref.sstMin),sstMax:finite(ref.sstMax),update:ip.dataUpdate};const waveOk=Number.isFinite(current.wave)&&current.wave>=ipmaRef.waveMin-.25&&current.wave<=ipmaRef.waveMax+.25;const dirOk=degToCompass(current.waveDirection)===ipmaRef.direction;const periodOk=Number.isFinite(current.period)&&current.period>=ipmaRef.periodMin-1&&current.period<=ipmaRef.periodMax+1;modelAgreement=waveOk&&dirOk&&periodOk?'Boa concordância':'Concordância parcial';}}
+  const daily=(w.daily?.time||[]).filter(date=>date>=today).slice(0,7).map((date,i)=>{const rows=hourly.filter(h=>h.time.startsWith(date)&&h.score!=null&&h.daylight);if(!rows.length)return {date,label:dayLabel(date,today),bestScore:null,bestTime:null,minWave:null,maxWave:null,minWind:null,maxWind:null,minVisibility:null,maxVisibility:null,trend:null};const bestDay=rows.slice().sort((a,b)=>b.score-a.score)[0];const vv=rows.map(r=>r.visibility?.meters).filter(Number.isFinite);return {date,label:dayLabel(date,today),bestScore:bestDay.score,bestTime:bestDay.time.slice(11,16),minWave:Math.min(...rows.map(r=>r.wave).filter(Number.isFinite)),maxWave:Math.max(...rows.map(r=>r.wave).filter(Number.isFinite)),minWind:Math.min(...rows.map(r=>r.wind).filter(Number.isFinite)),maxWind:Math.max(...rows.map(r=>r.wind).filter(Number.isFinite)),minVisibility:vv.length?Math.min(...vv):null,maxVisibility:vv.length?Math.max(...vv):null,trend:bestDay.visibility?.trend||null};});
+  const cameraLinks=[s.camera,s.camera2,s.ipmaCamera].filter(Boolean); const satellite=satelliteInfo();
+  return {version:VERSION,name,lat,lon,exposure:s.exposure,exposureText:s.protection,score:scoreData?.score??null,scoreVersion:'Spearo Score 4.0',scoreComponents:scoreData?.components||[],scoreReasons:scoreData?{positives:scoreData.positives,negatives:scoreData.negatives}:{positives:[],negatives:[]},status,statusEmoji,statusText,decision:scoreData?.score>=8.5?'SIM':scoreData?.score>=7?'TALVEZ':scoreData?.score>=5?'EXIGENTE':'NÃO',wave:finite(current.wave)!=null?`${fmt(current.wave)} m`:'—',period:finite(current.period)!=null?`${fmt(current.period)} s`:'—',direction:degToCompass(current.waveDirection),waterTemp:finite(current.waterTemp)!=null?`${fmt(current.waterTemp)} °C`:'—',wind:finite(current.wind)!=null?`${fmt(current.wind)} km/h ${degToCompass(current.windDirection)}`:'—',gust:finite(current.gust)!=null?`${fmt(current.gust)} km/h`:'—',energy:energy!=null?`~${fmt(energy)} (indicador relativo)`:'—',atmosphericVisibility:finite(current.atmosphericVisibility)!=null?`${(current.atmosphericVisibility/1000).toFixed(1)} km`:'Não disponível',underwaterVisibility:currentVis.meters!=null?`${currentVis.label} provável`:'Sem estimativa confiável',visibility:currentVis,swell:finite(current.swell)!=null?`${fmt(current.swell)} m`:'—',swellDirection:degToCompass(current.swellDirection),swellPeriod:finite(current.swellPeriod)!=null?`${fmt(current.swellPeriod)} s`:'—',tideLevel:finite(current.tideLevel)!=null?`${current.tideLevel.toFixed(2)} m MSL*`:'—',currentSpeed:finite(current.current)!=null?`${fmt(current.current)} km/h`:'—',currentDirection:degToCompass(current.currentDirection),daylight:{sunrise:w.daily?.sunrise?.[0]||null,sunset:w.daily?.sunset?.[0]||null,rainMax:finite(w.daily?.precipitation_probability_max?.[0])},bestWindow,bestWindowTime:best?.time||'',bestWindowShort:best?`${bestDayLabel} ${best.time.slice(11,16)} — ${best.score}/10`:'—',bestWindowAverage:window,modelAgreement,ipmaReference:ipmaRef,cameras:cameraLinks,satellite,daily,hourly:hourly.filter(h=>new Date(h.time)>=new Date()).slice(0,168),updatedAt:new Date().toISOString(),note:'A visibilidade subaquática é uma estimativa heurística baseada na energia recente do mar, exposição à ondulação/vento e chuva como proxy de suspensão. Não é uma medição direta. A integração Copernicus de turbidez/SPM é a próxima camada quando forem configuradas credenciais; não são inventados valores de satélite.'};
 }
+
+
+
+const DATA_DIR = path.join(__dirname, '../data');
+const OBS_FILE = path.join(DATA_DIR, 'observations.json');
+const VIS_LEVELS = ['Muito boa','Boa','Média','Fraca','Muito fraca'];
+const WATER_STATES = ['Limpa','Ligeiramente turva','Turva','Muito turva'];
+function loadObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});if(fs.existsSync(OBS_FILE)){const v=JSON.parse(fs.readFileSync(OBS_FILE,'utf8'));return Array.isArray(v)?v:[]}}catch(e){console.error('[OBS LOAD]',e.message)}return []}
+let observations=loadObservations();
+function saveObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});fs.writeFileSync(OBS_FILE,JSON.stringify(observations.slice(-1000),null,2))}catch(e){console.error('[OBS SAVE]',e.message)}}
+function recentObservations(spot){const cutoff=Date.now()-7*86400000;return observations.filter(o=>o.spot===spot&&Date.parse(o.createdAt)>=cutoff).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,20)}
+function observationSummary(spot){const rows=recentObservations(spot),ranks={'Muito boa':5,'Boa':4,'Média':3,'Fraca':2,'Muito fraca':1};if(!rows.length)return{count:0,last:null,averageLabel:null,distribution:Object.fromEntries(VIS_LEVELS.map(x=>[x,0]))};const avg=rows.reduce((s,o)=>s+(ranks[o.visibilityLabel]||0),0)/rows.length;const averageLabel=avg>=4.5?'Muito boa':avg>=3.5?'Boa':avg>=2.5?'Média':avg>=1.5?'Fraca':'Muito fraca';return{count:rows.length,last:rows[0],averageLabel,distribution:Object.fromEntries(VIS_LEVELS.map(x=>[x,rows.filter(o=>o.visibilityLabel===x).length]))}}
+function readObservationBody(req){return new Promise((resolve,reject)=>{let b='';req.on('data',c=>{b+=c;if(b.length>20000){reject(new Error('Pedido demasiado grande'));req.destroy()}});req.on('end',()=>{try{resolve(JSON.parse(b||'{}'))}catch(e){reject(new Error('JSON inválido'))}});req.on('error',reject)})}
 
 async function getSpotData(reqUrl){
   const name=reqUrl.searchParams.get('name')||'Spot';
@@ -391,18 +239,6 @@ async function getSpotData(reqUrl){
   if(!found) throw Object.assign(new Error('Dados do spot indisponíveis'),{statusCode:502});
   return found;
 }
-
-
-const DATA_DIR = path.join(__dirname, '../data');
-const OBS_FILE = path.join(DATA_DIR, 'observations.json');
-const VIS_LEVELS = ['Muito boa','Boa','Média','Fraca','Muito fraca'];
-const WATER_STATES = ['Limpa','Ligeiramente turva','Turva','Muito turva'];
-function loadObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});if(fs.existsSync(OBS_FILE)){const v=JSON.parse(fs.readFileSync(OBS_FILE,'utf8'));return Array.isArray(v)?v:[];}}catch(e){console.error('[OBS LOAD]',e.message)}return[]}
-let observations=loadObservations();
-function saveObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});fs.writeFileSync(OBS_FILE,JSON.stringify(observations.slice(-1000),null,2))}catch(e){console.error('[OBS SAVE]',e.message)}}
-function recentObservations(spot){const cutoff=Date.now()-7*86400000;return observations.filter(o=>o.spot===spot&&Date.parse(o.createdAt)>=cutoff).sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0,20)}
-function observationSummary(spot){const rows=recentObservations(spot),ranks={'Muito boa':5,'Boa':4,'Média':3,'Fraca':2,'Muito fraca':1};if(!rows.length)return{count:0,last:null,averageLabel:null,distribution:Object.fromEntries(VIS_LEVELS.map(x=>[x,0]))};const avg=rows.reduce((s,o)=>s+(ranks[o.visibilityLabel]||0),0)/rows.length;const averageLabel=avg>=4.5?'Muito boa':avg>=3.5?'Boa':avg>=2.5?'Média':avg>=1.5?'Fraca':'Muito fraca';return{count:rows.length,last:rows[0],averageLabel,distribution:Object.fromEntries(VIS_LEVELS.map(x=>[x,rows.filter(o=>o.visibilityLabel===x).length]))}}
-function readObservationBody(req){return new Promise((resolve,reject)=>{let b='';req.on('data',c=>{b+=c;if(b.length>20000)req.destroy()});req.on('end',()=>{try{resolve(JSON.parse(b||'{}'))}catch(e){reject(new Error('JSON inválido'))}});req.on('error',reject)})}
 
 function serveStatic(res,pathname){const clean=pathname==='/'?'index.html':pathname.replace(/^\/+/, '');const filePath=path.resolve(PUBLIC_DIR,clean);if(!filePath.startsWith(path.resolve(PUBLIC_DIR)))return json(res,403,{error:'Acesso negado'});if(!fs.existsSync(filePath)||!fs.statSync(filePath).isFile())return json(res,404,{error:'Ficheiro não encontrado'});const ext=path.extname(filePath);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'};res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream','Cache-Control':'no-cache'});fs.createReadStream(filePath).pipe(res);}
 
