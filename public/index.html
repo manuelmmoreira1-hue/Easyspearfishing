@@ -38,11 +38,15 @@ const spots=[
 ["Vila do Conde","porto",41.353,-8.744],["Póvoa de Varzim","porto",41.381,-8.765]
 ];
 const el=document.querySelector("#spots"), details=document.querySelector("#details");
+const buttons=[];
 spots.forEach(s=>{
  const b=document.createElement("button"); b.className="spot";
  b.innerHTML=`<div class="name">📍 ${s[0]}</div><div class="score">—</div><div class="mini">A carregar dados...</div>`;
  b.onclick=()=>loadSpot(s,b); el.appendChild(b);
+ buttons.push([s,b]);
 });
+// Carrega automaticamente as condições de todos os spots ao abrir a página.
+Promise.all(buttons.map(([s,b])=>loadSpot(s,b)));
 async function loadSpot(s,b){
  details.innerHTML=`<h2>📍 ${s[0]}</h2><p>A carregar condições reais...</p>`;
  try{
