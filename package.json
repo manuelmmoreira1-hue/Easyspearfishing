@@ -1,11 +1,7 @@
 {
-  "name": "easyspearfishing",
-  "version": "3.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node server/index.js"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "name":"easyspearfishing",
+  "version":"1.0.0",
+  "private":true,
+  "scripts":{"start":"node server/index.js"},
+  "dependencies":{}
 }

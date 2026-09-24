@@ -1,25 +1,27 @@
-# Easyspearfishing 2.0
+# Easyspearfishing — Intelligence v2
 
-Aplicação de apoio à pesca submarina para 12 spots entre Foz do Douro e Póvoa de Varzim.
+Camada de inteligência para pesca submarina sobre a base Open-Meteo existente.
 
-## Metodologia
+## Inclui
+- 12 spots Foz do Douro → Póvoa de Varzim
+- 7 dias / 168 horas
+- histórico recente até 72 h
+- estimativa de visibilidade submarina
+- tendência e confiança
+- Easy Spear Score
+- melhor janela diurna
+- chuva/runoff e energia relativa
+- exposição individual por spot
+- observações reais dos utilizadores
+- concordância de modelos para ondas, período e vento no detalhe do spot
 
-- Ondulação: blend explícito de DWD EWAM (45%), ECMWF WAM (35%) e Météo-France MFWAM (20%).
-- Vento: blend de DWD ICON-EU (60%) e ECMWF IFS (40%).
-- Os modelos são consultados para as coordenadas dos 12 spots, não para uma única localização regional.
-- O score inclui a exposição direcional específica de cada spot, calculada a partir da direção de onda/swell e do azimute de exposição definido para o spot.
-- A dispersão entre modelos é apresentada para indicar concordância/incerteza.
-- A visibilidade subaquática é uma estimativa heurística baseada em energia/ressuspensão recente, vento/onda incidente e chuva como proxy de escorrência. Não é uma medição direta.
-- Copernicus Marine Ocean Colour é identificado como futura camada de turbidez/SPM; não são inventados valores de satélite sem acesso aos dados.
-- IPMA é usado como referência regional portuguesa.
+## Arranque
+```bash
+npm install
+npm start
+```
 
-## Fontes
+## Observações
+As observações são guardadas em `data/observations.json`. Em Render Free, o disco local não é persistente entre certos redeploys/restarts; para produção será recomendável trocar esta camada por Postgres/Supabase/Firebase.
 
-Open-Meteo Marine API: https://open-meteo.com/en/docs/marine-weather-api
-Open-Meteo Weather API: https://open-meteo.com/en/docs
-Copernicus Marine Ocean Colour IBI HR: https://data.marine.copernicus.eu/product/OCEANCOLOUR_IBI_BGC_HR_L3_NRT_009_204/description
-IPMA Open Data: https://api.ipma.pt/open-data/
-
-## Nota importante
-
-A resolução dos modelos de ondas continua a ser de vários quilómetros. Mesmo uma previsão por coordenada não transforma o modelo numa medição do ponto exato junto às pedras. A app mostra essa limitação e usa a exposição local para diferenciar os spots sem fabricar uma altura de onda medida localmente.
+A visibilidade submarina é uma estimativa heurística e não uma medição direta.
