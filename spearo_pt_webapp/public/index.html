@@ -1,74 +1,42 @@
 <!doctype html>
-<html lang="pt">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Spearo PT</title>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Easyspearfishing V10</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fa;color:#15202b}
-header{background:linear-gradient(135deg,#7b2cbf,#ff7a00);color:#fff;padding:22px 18px}
-h1{margin:0;font-size:30px}header p{margin:5px 0 0;opacity:.9}.wrap{max-width:1100px;margin:auto;padding:16px}
-.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 5px 20px #0000000d}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.spot{border:1px solid #dce3ea;border-radius:14px;padding:13px;background:#fff;text-align:left;cursor:pointer}
-.spot:hover{border-color:#7b2cbf}.name{font-weight:800}.score{font-size:20px;font-weight:900;margin:4px 0}.mini{font-size:12px;color:#64748b}
-#details{min-height:140px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-.metric{background:#f6f8fa;border-radius:12px;padding:10px}.metric small{color:#64748b}.metric b{font-size:16px}
-.status{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee}
-.warn{font-size:12px;color:#64748b;margin-top:12px}
-@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}}
-</style>
-</head>
-<body>
-<header><div class="wrap"><h1>🎯 Spearo PT</h1><p>Condições para pesca submarina — Foz do Douro → Póvoa</p></div></header>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f7fa;color:#101828}header{background:linear-gradient(135deg,#111827,#243b53);color:#fff;padding:26px 0}.wrap{max-width:1500px;margin:auto;padding:0 18px}h1{margin:0 0 6px;font-size:30px}h2{margin:0 0 10px}.subtle,.mini{color:#667085;font-size:13px}.topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.refresh{font-size:12px;opacity:.85}.card{background:#fff;border:1px solid #dfe5ec;border-radius:16px;padding:18px;margin:18px 0;box-shadow:0 2px 10px rgba(16,24,40,.04)}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.spot{border:1px solid #d9e0e7;background:#fff;border-radius:14px;padding:16px;text-align:left;cursor:pointer;transition:.15s}.spot:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.07)}.name{font-weight:800;font-size:17px}.score{font-size:26px;font-weight:900;margin:10px 0 3px}.quick{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.quick span,.pill{background:#f5f7fa;border-radius:9px;padding:7px 9px;font-size:12px}.visibility{margin-top:10px;padding:10px;border-radius:11px;background:#eef6ff}.visibility b{font-size:14px}.decision{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee;font-size:12px;margin-left:8px;vertical-align:middle}.decision.maybe{background:#fff8df}.decision.no{background:#ffecec}.status{font-size:13px;font-weight:700;margin-left:8px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:14px 0}.metric{background:#f6f8fa;border-radius:11px;padding:10px;font-size:13px}.metric small{color:#667085}.metric b{font-size:15px}.bestbox,.reasonbox,.visbox,.cameraBox,.modelbox{background:#f7f9fc;border-radius:12px;padding:13px;margin:12px 0}.visbox{background:#eef6ff}.cameraBox{background:#f7f4ff}.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.links a{display:inline-block;text-decoration:none;background:#fff;border:1px solid #cfd8e3;padding:7px 10px;border-radius:9px;color:#175cd3;font-size:13px}.modelbox{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.model{background:#fff;border:1px solid #e3e8ef;border-radius:10px;padding:10px;font-size:13px}.formula{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.formula div{background:#f6f8fa;border-radius:10px;padding:9px;font-size:12px}.formula b{display:block;font-size:14px;margin-bottom:2px}.daily{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:12px 0}.day{border:1px solid #dfe5ec;border-radius:11px;padding:10px;background:#fff}.day strong{display:block;margin-bottom:5px}.day .big{font-size:18px;font-weight:900}.bar{height:7px;border-radius:10px;background:#e9eef3;margin:8px 0;overflow:hidden}.bar i{display:block;height:100%;background:#4b5563}.hourly{overflow:auto;margin-top:14px}.hourly table{border-collapse:collapse;width:100%;min-width:1350px;font-size:12px}.hourly th,.hourly td{border-bottom:1px solid #e5e7eb;padding:7px 8px;text-align:center;white-space:nowrap}.hourly th{position:sticky;top:0;background:#f6f8fa}.best{background:#eef7ee;font-weight:800}.night{opacity:.42}.daybadge{display:inline-block;margin-left:5px;font-size:10px;padding:2px 5px;border-radius:99px;background:#eef7ee}.warn{background:#fff8e6;border:1px solid #f2df9c;border-radius:10px;padding:10px;font-size:12px}.source{color:#667085;font-size:11px}.loading{opacity:.65}@media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.modelbox{grid-template-columns:1fr}.formula{grid-template-columns:repeat(3,1fr)}.daily{grid-template-columns:repeat(4,1fr)}}@media(max-width:650px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.formula{grid-template-columns:repeat(2,1fr)}.daily{grid-template-columns:repeat(2,1fr)}h1{font-size:25px}.wrap{padding:0 10px}}
+</style></head><body>
+<header><div class="wrap"><div class="topbar"><div><h1>🎯 Easyspearfishing</h1><div>Condições para pesca submarina — Foz do Douro → Póvoa de Varzim</div></div><div class="refresh">🔄 Atualização automática: a cada hora · V10</div></div></div></header>
 <main class="wrap">
-<section class="card">
-<h2>📍 Escolhe o spot</h2>
-<div id="spots" class="grid"></div>
-</section>
-<section class="card" id="details"><h2>Seleciona um spot</h2><p class="mini">Os dados reais aparecem aqui quando o backend estiver configurado.</p></section>
+<section class="card"><h2>📍 Spots</h2><p class="subtle">O score agora dá peso elevado à visibilidade estimada. A estimativa de água usa o comportamento das últimas 72 h + estado previsto do mar/vento/chuva. Não é uma medição direta.</p><div id="spots" class="grid"></div></section>
+<section class="card" id="details"><h2>Seleciona um spot</h2><p class="mini">A app carrega automaticamente a previsão horária de 7 dias.</p></section>
+<section class="card"><h2>👁️ Como estimamos a visibilidade</h2><div class="formula"><div><b>🌊 Histórico 72 h</b>Energia/ressuspensão</div><div><b>🧭 Exposição</b>Onda + vento face ao spot</div><div><b>🌧️ Chuva</b>Proxy de escorrência</div><div><b>📈 Recuperação</b>Mar a baixar = tendência de limpeza</div><div><b>🛰️ Satélite</b>Copernicus preparado como próxima camada</div></div><p class="subtle">A literatura e ferramentas de clareza costeira usam sinais de energia/ressuspensão e propriedades ópticas da água. O Copernicus disponibiliza turbidez e matéria particulada em suspensão a 100 m na faixa costeira ibérica, com observação diária; a integração automática de valores requer credenciais Copernicus Marine.</p></section>
 </main>
 <script>
-const spots=[
-["Foz do Douro","porto",41.148,-8.675],["Castelo do Queijo","porto",41.169,-8.689],
-["Matosinhos","porto",41.182,-8.705],["Leça da Palmeira","porto",41.190,-8.704],
-["Marreco","porto",41.235,-8.724],["Perafita","porto",41.225,-8.716],
-["Angeiras","porto",41.265,-8.722],["Labruge","porto",41.280,-8.716],
-["Mindelo","porto",41.316,-8.724],["Azurara","porto",41.337,-8.741],
-["Vila do Conde","porto",41.353,-8.744],["Póvoa de Varzim","porto",41.381,-8.765]
-];
-const el=document.querySelector("#spots"), details=document.querySelector("#details");
-spots.forEach(s=>{
- const b=document.createElement("button"); b.className="spot";
- b.innerHTML=`<div class="name">📍 ${s[0]}</div><div class="score">—</div><div class="mini">A carregar dados...</div>`;
- b.onclick=()=>loadSpot(s,b); el.appendChild(b);
-});
-async function loadSpot(s,b){
- details.innerHTML=`<h2>📍 ${s[0]}</h2><p>A carregar condições reais...</p>`;
- try{
-   const r=await fetch(`/api/spot?lat=${s[2]}&lon=${s[3]}&name=${encodeURIComponent(s[0])}`);
-   if(!r.ok) throw new Error("API indisponível");
-   const d=await r.json();
-   const score=d.score==null?"—":d.score.toFixed(1)+"/10";
-   b.querySelector(".score").textContent=(d.statusEmoji||"🟡")+" "+score;
-   b.querySelector(".mini").textContent=d.summary||"Dados recebidos";
-   details.innerHTML=`
-    <h2>📍 ${s[0]} <span class="status">${d.statusEmoji||"🟡"} ${d.status||"Sem classificação"}</span></h2>
-    <div class="metrics">
-      <div class="metric"><small>🌊 Onda</small><br><b>${d.wave||"—"}</b></div>
-      <div class="metric"><small>⏱️ Período</small><br><b>${d.period||"—"}</b></div>
-      <div class="metric"><small>🧭 Direção</small><br><b>${d.direction||"—"}</b></div>
-      <div class="metric"><small>🌡️ Água</small><br><b>${d.waterTemp||"—"}</b></div>
-      <div class="metric"><small>💨 Vento</small><br><b>${d.wind||"—"}</b></div>
-      <div class="metric"><small>💨 Rajadas</small><br><b>${d.gust||"—"}</b></div>
-      <div class="metric"><small>⚡ Energia</small><br><b>${d.energy||"—"}</b></div>
-      <div class="metric"><small>👁️ Visibilidade</small><br><b>${d.visibility||"Não confirmada"}</b></div>
-    </div>
-    <p class="warn">${d.note||""}</p>`;
- }catch(e){
-   details.innerHTML=`<h2>📍 ${s[0]}</h2><p>O frontend está pronto, mas o backend ainda não está ligado neste endereço.</p>`;
- }
+const spots=[['Foz do Douro',41.148,-8.675],['Castelo do Queijo',41.169,-8.689],['Matosinhos',41.182,-8.705],['Leça da Palmeira',41.190,-8.704],['Marreco',41.235,-8.724],['Perafita',41.225,-8.716],['Angeiras',41.265,-8.722],['Labruge',41.280,-8.716],['Mindelo',41.316,-8.724],['Azurara',41.337,-8.741],['Vila do Conde',41.353,-8.744],['Póvoa de Varzim',41.381,-8.765]];
+const el=document.querySelector('#spots'),details=document.querySelector('#details'),refs=[];
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function n(x,d=1){return Number.isFinite(Number(x))?Number(x).toFixed(d):'—'}
+function dir(d){if(!Number.isFinite(Number(d)))return '—';return ['N','NE','E','SE','S','SW','W','NW'][Math.round(Number(d)/45)%8]}
+function emoji(s){if(s==null)return '🟡';if(s>=8.5)return '🟢';if(s>=7)return '🟡';if(s>=5)return '🟠';return '🔴'}
+function decClass(x){return x==='SIM'?'':x==='TALVEZ'?' maybe':' no'}
+function visEmoji(v){if(!v)return '⚪';if(v.meters>=4)return '🟢';if(v.meters>=2.5)return '🟡';if(v.meters>=1.5)return '🟠';return '🔴'}
+spots.forEach(s=>{const b=document.createElement('button');b.className='spot';b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score loading">⏳ A carregar</div><div class="mini">A obter previsão...</div><div class="quick"><span>🌊 —</span><span>⏱️ —</span><span>💨 —</span><span>🌡️ —</span></div><div class="visibility">👁️ <b>Visibilidade:</b> —</div>`;b.onclick=()=>loadSpot(s,b,true);el.appendChild(b);refs.push([s,b]);});
+async function loadSpot(s,b,show){try{const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),30000);let r;try{r=await fetch(`/api/spot?lat=${s[1]}&lon=${s[2]}&name=${encodeURIComponent(s[0])}&_=${Date.now()}`,{signal:ctl.signal});}finally{clearTimeout(to);}if(!r.ok){let msg='API indisponível';try{const e=await r.json();if(e?.error)msg=e.error;}catch(_){}throw new Error(msg);}const d=await r.json();const sc=Number(d.score);b.querySelector('.score').classList.remove('loading');b.querySelector('.score').textContent=`${emoji(sc)} ${Number.isFinite(sc)?sc+'/10':'—'}`;b.querySelector('.mini').textContent=`${d.status} • melhor: ${esc(d.bestWindowShort||'—')}`;b.querySelector('.quick').innerHTML=`<span>🌊 ${esc(d.wave)}</span><span>⏱️ ${esc(d.period)}</span><span>💨 ${esc(d.wind)}</span><span>🌡️ ${esc(d.waterTemp)}</span>`;b.querySelector('.visibility').innerHTML=`${visEmoji(d.visibility)} <b>Visibilidade:</b> ${esc(d.underwaterVisibility)} · ${esc(d.visibility?.trend||'—')}`;if(show)render(s,d);}catch(e){b.querySelector('.score').textContent='⚠️ Erro';b.querySelector('.mini').textContent='Não foi possível carregar';b.querySelector('.quick').innerHTML='<span>Dados indisponíveis</span>';if(show)details.innerHTML=`<h2>📍 ${esc(s[0])}</h2><p>Não foi possível carregar os dados: ${esc(e.message)}</p>`;}}
+Promise.all(refs.map(([s,b])=>loadSpot(s,b,false)));
+function render(s,d){
+const rows=(d.hourly||[]).map(h=>{const isBest=d.bestWindowTime&&h.time===d.bestWindowTime;const night=!h.daylight;return `<tr class="${isBest?'best ':''}${night?'night':''}"><td>${esc(h.time.slice(0,10))} ${esc(h.time.slice(11,16))}${h.daylight?'<span class="daybadge">dia</span>':'<span class="daybadge">noite</span>'}</td><td>${n(h.wave)} m</td><td>${dir(h.waveDirection)}</td><td>${n(h.period)} s</td><td>${n(h.swell)} m</td><td>${dir(h.swellDirection)}</td><td>${n(h.swellPeriod)} s</td><td>${n(h.wind)} km/h</td><td>${dir(h.windDirection)}</td><td>${n(h.gust)} km/h</td><td>${n(h.energy)}</td><td>${visEmoji(h.visibility)} ${esc(h.visibility?.label||'—')}</td><td>${esc(h.visibility?.trend||'—')}</td><td>${Number.isFinite(h.atmosphericVisibility)?(h.atmosphericVisibility/1000).toFixed(1)+' km':'—'}</td><td>${Number.isFinite(h.precipitationProbability)?h.precipitationProbability+'%':'—'}</td><td>${Number.isFinite(h.tideLevel)?h.tideLevel.toFixed(2)+' m':'—'}</td><td>${Number.isFinite(h.current)?h.current.toFixed(1)+' km/h '+dir(h.currentDirection):'—'}</td><td>${Number.isFinite(h.score)?h.score.toFixed(1)+'/10':'—'}</td></tr>`}).join('');
+const comps=(d.scoreComponents||[]).map(c=>`<div class="model"><b>${esc(c.name)}</b><br>${c.score}/10 <span class="subtle">(${c.weight}%)</span><br><span class="subtle">${esc(c.reason)}</span></div>`).join('');
+const days=(d.daily||[]).map(x=>{const width=Number.isFinite(x.bestScore)?Math.max(0,Math.min(100,x.bestScore*10)):0;return `<div class="day"><strong>${esc(x.label)}</strong><div class="big">${Number.isFinite(x.bestScore)?emoji(x.bestScore)+' '+x.bestScore+'/10':'—'}</div><div class="mini">melhor ${esc(x.bestTime||'—')}</div><div class="bar"><i style="width:${width}%"></i></div><div class="mini">🌊 ${n(x.minWave)}–${n(x.maxWave)} m</div><div class="mini">👁️ ${Number.isFinite(x.minVisibility)?n(x.minVisibility)+'–'+n(x.maxVisibility)+' m':'—'}</div><div class="mini">💨 ${Number.isFinite(x.minWind)?n(x.minWind)+'–'+n(x.maxWind)+' km/h':'—'}</div><div class="mini">${x.trend==='a melhorar'?'↗️':x.trend==='a piorar'?'↘️':'→'} ${esc(x.trend||'—')}</div></div>`}).join('');
+const cams=(d.cameras||[]).map(c=>`<a href="${esc(c.url)}" target="_blank" rel="noopener">📷 ${esc(c.label)}</a>`).join('');
+const v=d.visibility||{};
+details.innerHTML=`<h2>📍 ${esc(s[0])} <span class="status">${esc(d.statusEmoji)} ${esc(d.status)}</span><span class="decision${decClass(d.decision)}">${esc(d.decision)} — ${esc(d.decision==='SIM'?'Vale a pena no modelo':d.decision==='TALVEZ'?'Pode valer a pena':'Condições exigentes')}</span></h2>
+<div class="metrics"><div class="metric"><small>🌊 Onda</small><br><b>${esc(d.wave)}</b></div><div class="metric"><small>⏱️ Período</small><br><b>${esc(d.period)}</b></div><div class="metric"><small>🧭 Direção</small><br><b>${esc(d.direction)}</b></div><div class="metric"><small>🌡️ Água</small><br><b>${esc(d.waterTemp)}</b></div><div class="metric"><small>💨 Vento</small><br><b>${esc(d.wind)}</b></div><div class="metric"><small>💨 Rajadas</small><br><b>${esc(d.gust)}</b></div><div class="metric"><small>⚡ Energia relativa</small><br><b>${esc(d.energy)}</b></div><div class="metric"><small>🌫️ Vis. atmosférica</small><br><b>${esc(d.atmosphericVisibility)}</b></div><div class="metric"><small>🌊 Swell</small><br><b>${esc(d.swell)} ${esc(d.swellDirection)}</b></div><div class="metric"><small>⏱️ Swell período</small><br><b>${esc(d.swellPeriod)}</b></div><div class="metric"><small>🌙 Nível do mar</small><br><b>${esc(d.tideLevel)}</b></div><div class="metric"><small>↗️ Corrente</small><br><b>${esc(d.currentSpeed)} ${esc(d.currentDirection)}</b></div></div>
+<div class="visbox"><h3 style="margin:0 0 5px">${visEmoji(v)} 👁️ Visibilidade subaquática estimada: ${esc(d.underwaterVisibility)}</h3><b>Confiança:</b> ${esc(v.confidence||'—')} · <b>Tendência:</b> ${esc(v.trend||'—')} · <b>Score:</b> ${Number.isFinite(v.score)?n(v.score)+'/10':'—'}<br><b>Probabilidade estimada:</b> ≥2 m ${v.probabilities?.atLeast2m??'—'}% · ≥3 m ${v.probabilities?.atLeast3m??'—'}% · ≥5 m ${v.probabilities?.atLeast5m??'—'}%<br><span class="subtle">${esc((v.factors||[]).join(' · ')||'Sem fatores suficientes para explicar a estimativa.')}</span><br><span class="subtle">${esc(v.source||'')}</span></div>
+<div class="cameraBox"><b>📷 Ver as câmaras</b><div class="links">${cams||'<span class="subtle">Sem câmara associada.</span>'}</div><div class="mini" style="margin-top:7px">As câmaras servem para confirmar visualmente a água; não são tratadas como medição automática de metros de visibilidade.</div></div>
+<div class="bestbox"><b>🕒 Melhor janela nos próximos 7 dias:</b> ${esc(d.bestWindow||'Não calculada')}<br><span class="subtle">Janela aproximada de 2 h: ${esc(d.bestWindowAverage?.start||'—')}–${esc(d.bestWindowAverage?.end||'—')} · média ${esc(d.bestWindowAverage?.score||'—')}/10. A noite é excluída.</span></div>
+<h3>📅 Previsão 7 dias</h3><div class="daily">${days}</div>
+<div class="reasonbox"><b>🔎 Porque este score?</b><br><span class="subtle">Pontos positivos: ${esc((d.scoreReasons?.positives||[]).join(', ')||'—')}</span><br><span class="subtle">Pontos a penalizar: ${esc((d.scoreReasons?.negatives||[]).join(', ')||'—')}</span></div>
+<div class="modelbox">${comps}<div class="model"><b>🇵🇹 IPMA</b><br>${d.ipmaReference?`Hoje: ${d.ipmaReference.waveMin}–${d.ipmaReference.waveMax} m · ${d.ipmaReference.periodMin}–${d.ipmaReference.periodMax} s · ${esc(d.ipmaReference.direction)}`:'Não disponível'}<br><span class="subtle">${d.ipmaReference?.update?'Atualizado '+esc(d.ipmaReference.update.replace('T',' ').slice(0,16)):'—'}</span></div><div class="model"><b>🛰️ Copernicus</b><br>Turbidez/SPM preparado<br><span class="subtle">${esc(d.satellite?.note||'—')}</span></div><div class="model"><b>🔄 Concordância</b><br>${esc(d.modelAgreement)}<br><span class="subtle">Comparação regional IPMA / Open-Meteo.</span></div></div>
+<div class="hourly"><table><thead><tr><th>Hora</th><th>Onda</th><th>Dir.</th><th>Per.</th><th>Swell</th><th>Dir.</th><th>Per.</th><th>Vento</th><th>Dir.</th><th>Raj.</th><th>Energia</th><th>Vis. sub.</th><th>Tend.</th><th>Vis. atmos.</th><th>Chuva</th><th>Nível mar</th><th>Corrente</th><th>Score</th></tr></thead><tbody>${rows}</tbody></table></div>
+<p class="source">Previsão horária de 7 dias, atualizada automaticamente a cada hora. A app também usa 3 dias anteriores para estimar a recuperação/ressuspensão. Open-Meteo indica que os dados de ondas são de escala de vários km e que correntes/marés têm limitações costeiras.</p><p class="warn">⚠️ O Easyspearfishing é uma ferramenta de apoio e não uma garantia de segurança. A visibilidade estimada não substitui a observação real da água. Se a câmara e o mar real contradisserem o modelo, dá prioridade ao que estás a observar no local.</p>`;
 }
-</script>
-</body>
-</html>
+let timer=setInterval(()=>{const current=refs.find(x=>x[1]===document.activeElement);refs.forEach(([s,b])=>loadSpot(s,b,false));},60*60*1000);
+</script></body></html>
