@@ -36,8 +36,12 @@ function calcEnergy(wave, period) {
   return 0.49 * wave * wave * period;
 }
 
-function score(wave, period, wind, visibility) {
-  if (![wave, period, wind].every(Number.isFinite)) return null;
+function energyForScore(wave, period) {
+  return calcEnergy(wave, period);
+}
+
+function score(wave, period, wind, gust, energy) {
+  if (![wave, period, wind, gust].every(Number.isFinite)) return null;
   let s = 10;
   // Transparent, provisional heuristic for spearfishing; not a safety certification.
   if (wave > 0.7) s -= Math.min(4, (wave - 0.7) * 3.0);
@@ -46,8 +50,12 @@ function score(wave, period, wind, visibility) {
   if (period < 5) s -= 0.5;
   if (period > 12) s -= 0.3;
   if (wind > 8) s -= Math.min(2.5, (wind - 8) * 0.18);
-  if (wind > 18) s -= 1.5;
-  if (Number.isFinite(visibility) && visibility < 3000) s -= 0.5;
+  if (gust > 18) s -= Math.min(1.5, (gust - 18) * 0.12);
+  if (gust > 28) s -= 1.0;
+  if (Number.isFinite(energy)) {
+    if (energy > 15) s -= Math.min(2.0, (energy - 15) * 0.10);
+    if (energy > 25) s -= 1.5;
+  }
   return Math.max(0, Math.min(10, Number(s.toFixed(1))));
 }
 
@@ -128,12 +136,12 @@ app.get('/api/spot', async (req, res) => {
       visibility: Number(weather.current?.visibility)
     };
 
-    const s = score(current.wave, current.period, current.wind, current.visibility);
-    const [statusEmoji, status] = classify(s);
     const energy = calcEnergy(current.wave, current.period);
+    const s = score(current.wave, current.period, current.wind, current.gust, energy);
+    const [statusEmoji, status] = classify(s);
 
     const first24 = hourly.slice(0, 24);
-    const scored = first24.map(h => ({ ...h, score: score(h.wave, h.period, h.wind, h.visibility) })).filter(h => h.score != null);
+    const scored = first24.map(h => ({ ...h, score: score(h.wave, h.period, h.wind, h.gust, h.energy) })).filter(h => h.score != null);
     scored.sort((a, b) => b.score - a.score);
     const best = scored[0] || null;
 
@@ -153,7 +161,8 @@ app.get('/api/spot', async (req, res) => {
       wind: Number.isFinite(current.wind) ? `${fmt(current.wind)} km/h ${degToCompass(current.windDirection)}` : '—',
       gust: Number.isFinite(current.gust) ? `${fmt(current.gust)} km/h` : '—',
       energy: Number.isFinite(energy) ? `~${fmt(energy)} kW/m (estimada)` : '—',
-      visibility: Number.isFinite(current.visibility) ? `${Math.round(current.visibility / 100) / 10} km` : 'Não disponível',
+      atmosphericVisibility: Number.isFinite(current.visibility) ? `${Math.round(current.visibility / 100) / 10} km` : 'Não disponível',
+      underwaterVisibility: 'Não disponível / não confirmada',
       swell: Number.isFinite(current.swell) ? `${fmt(current.swell)} m` : '—',
       swellDirection: degToCompass(current.swellDirection),
       swellPeriod: Number.isFinite(current.swellPeriod) ? `${fmt(current.swellPeriod)} s` : '—',
@@ -161,8 +170,10 @@ app.get('/api/spot', async (req, res) => {
       currentSpeed: Number.isFinite(current.current) ? `${fmt(current.current)} km/h` : '—',
       currentDirection: degToCompass(current.currentDirection),
       bestWindow: best ? `${best.time.slice(11,16)} — score ${best.score}/10` : 'Não calculado',
+      bestWindowTime: best ? best.time : '',
+      bestWindowShort: best ? `${best.time.slice(11,16)} — ${best.score}/10` : '—',
       hourly: first24,
-      note: 'Score provisório da app, baseado em mar, período, vento e visibilidade; não substitui avaliação local. A visibilidade subaquática real não é fornecida por esta API e não deve ser confundida com visibilidade atmosférica.'
+      note: 'Score provisório para apoio à decisão, baseado em altura/período da onda, vento, rajadas e energia estimada. Não é uma certificação de segurança. A visibilidade subaquática real não é fornecida por esta API.'
     });
   } catch (e) {
     console.error(e);
