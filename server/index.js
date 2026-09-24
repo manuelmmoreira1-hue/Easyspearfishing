@@ -1,4 +1,7 @@
 const http = require('http');
+const https = require('https');
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
@@ -53,7 +56,25 @@ function baseSpearoScore({wave,period,wind,gust,energy,swellDirection,waveDirect
   if(!c.length)return null; const tw=c.reduce((a,x)=>a+x.weight,0); const score=Number((c.reduce((a,x)=>a+x.score*x.weight,0)/tw).toFixed(1)); const sorted=c.slice().sort((a,b)=>a.score-b.score); return {score,components:c,positives:sorted.filter(x=>x.score>=8.5).slice(-3).map(x=>x.name),negatives:sorted.filter(x=>x.score<7).slice(0,3).map(x=>x.name)};
 }
 function classify(s){ if(s==null)return ['🟡','Dados insuficientes','Dados insuficientes para classificar.']; if(s>=8.5)return ['🟢','Muito favorável','Condições modeladas favoráveis. Confirma o mar e a visibilidade no local.']; if(s>=7)return ['🟡','Razoável','Condições utilizáveis no modelo, mas confirma a visibilidade e as condições locais.']; if(s>=5)return ['🟠','Exigente','Há fatores que podem dificultar a pesca; avalia localmente antes de entrar.']; return ['🔴','Desfavorável','O modelo indica condições exigentes; não uses este indicador isoladamente.']; }
-async function fetchJson(url){ const c=new AbortController(); const timer=setTimeout(()=>c.abort(),18000); try{ const r=await fetch(url,{signal:c.signal,headers:{'User-Agent':'Easyspearfishing/0.5','Accept':'application/json'}}); if(!r.ok)throw new Error(`HTTP ${r.status}`); return await r.json(); } finally{clearTimeout(timer);} }
+function fetchJson(url, timeoutMs=18000){
+  return new Promise((resolve,reject)=>{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    fetch(url,{signal:controller.signal,headers:{'User-Agent':'Easyspearfishing/0.6','Accept':'application/json'}})
+      .then(async res=>{
+        if(!res.ok){
+          let detail='';
+          try{ detail=await res.text(); }catch(_){}
+          throw new Error(`HTTP ${res.status}${detail?` — ${detail.slice(0,180)}`:''}`);
+        }
+        return res.json();
+      })
+      .then(resolve)
+      .catch(err=>reject(err.name==='AbortError'?new Error('Timeout da fonte externa'):err))
+      .finally(()=>clearTimeout(timer));
+  });
+}
+
 
 // Visibility model: deliberately an estimate, not a measured underwater-visibility product.
 // It follows the same general logic used by coastal-clarity models: recent wave stirring,
@@ -129,8 +150,8 @@ async function buildSpotData(reqUrl){
   const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=3&forecast_days=7&timezone=${encodeURIComponent(TZ)}&cell_selection=sea`;
   const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility&daily=sunrise,sunset,precipitation_probability_max&past_days=3&forecast_days=7&timezone=${encodeURIComponent(TZ)}`;
   const ipmaUrl='https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day0.json';
-  const [marine,weather,ipma]=await Promise.allSettled([fetchJson(marineUrl),fetchJson(weatherUrl),fetchJson(ipmaUrl)]); if(marine.status!=='fulfilled')throw new Error(`Marine API: ${marine.reason?.message||'indisponível'}`); if(weather.status!=='fulfilled')throw new Error(`Weather API: ${weather.reason?.message||'indisponível'}`);
-  const m=marine.value,w=weather.value,ip=ipma.status==='fulfilled'?ipma.value:null,mh=m.hourly||{},wh=w.hourly||{}; const n=Math.min((mh.time||[]).length,(wh.time||[]).length); const hourly=[];
+  const [marine,weather,ipma]=await Promise.allSettled([fetchJson(marineUrl,12000),fetchJson(weatherUrl,12000),fetchJson(ipmaUrl,12000)]); if(marine.status!=='fulfilled' && weather.status!=='fulfilled'){ const err=new Error(`Fontes externas indisponíveis — Marine: ${marine.reason?.message||'erro'}; Weather: ${weather.reason?.message||'erro'}`); err.statusCode=502; throw err; }
+  const m=marine.status==='fulfilled'?marine.value:null; const w=weather.status==='fulfilled'?weather.value:null; const ip=ipma.status==='fulfilled'?ipma.value:null; const mh=m?.hourly||{}; const wh=w?.hourly||{}; if(!m || !w){ throw Object.assign(new Error(`Dados parciais — Marine=${marine.status}, Weather=${weather.status}`),{statusCode:502}); } const n=Math.min((mh.time||[]).length,(wh.time||[]).length); const hourly=[];
   for(let i=0;i<n;i++){
     const wave=finite(mh.wave_height?.[i]),period=finite(mh.wave_period?.[i]),wind=finite(wh.wind_speed_10m?.[i]),gust=finite(wh.wind_gusts_10m?.[i]),energy=relativeEnergy(wave,period); const vis=estimateVisibilityAt(i,mh,wh,s); const ss=baseSpearoScore({wave,period,wind,gust,energy,swellDirection:finite(mh.swell_wave_direction?.[i]),waveDirection:finite(mh.wave_direction?.[i]),spot:s,current:finite(mh.ocean_current_velocity?.[i]),waterTemp:finite(mh.sea_surface_temperature?.[i]),visibilityScore:vis.score}); const time=mh.time[i];
     hourly.push({time,wave,waveDirection:finite(mh.wave_direction?.[i]),period,peakPeriod:finite(mh.wave_peak_period?.[i]),swell:finite(mh.swell_wave_height?.[i]),swellDirection:finite(mh.swell_wave_direction?.[i]),swellPeriod:finite(mh.swell_wave_period?.[i]),wind,windDirection:finite(wh.wind_direction_10m?.[i]),gust,atmosphericVisibility:finite(wh.visibility?.[i]),precipitationProbability:finite(wh.precipitation_probability?.[i]),precipitation:finite(wh.precipitation?.[i]),cloudCover:finite(wh.cloud_cover?.[i]),waterTemp:finite(mh.sea_surface_temperature?.[i]),tideLevel:finite(mh.sea_level_height_msl?.[i]),current:finite(mh.ocean_current_velocity?.[i]),currentDirection:finite(mh.ocean_current_direction?.[i]),energy,visibility:vis,score:ss?.score??null,daylight:daylightForTime(time,w.daily||{})});
@@ -153,7 +174,7 @@ async function getSpotData(reqUrl){
 }
 
 function serveStatic(res,pathname){const clean=pathname==='/'?'index.html':pathname.replace(/^\/+/, '');const filePath=path.resolve(PUBLIC_DIR,clean);if(!filePath.startsWith(path.resolve(PUBLIC_DIR)))return json(res,403,{error:'Acesso negado'});if(!fs.existsSync(filePath)||!fs.statSync(filePath).isFile())return json(res,404,{error:'Ficheiro não encontrado'});const ext=path.extname(filePath);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'};res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream','Cache-Control':'no-cache'});fs.createReadStream(filePath).pipe(res);}
-const server=http.createServer((req,res)=>{
+const server=http.createServer(async (req,res)=>{
   const started=Date.now();
   res.setHeader('X-Easyspearfishing-Version', VERSION);
   try {
@@ -166,8 +187,15 @@ const server=http.createServer((req,res)=>{
     if(req.method==='GET' && u.pathname==='/api/ping'){
       return json(res,200,{ok:true,pong:true,version:VERSION});
     }
+    if(req.method==='GET' && u.pathname==='/api/test-sources'){
+      const lat=41.235, lon=-8.724;
+      const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,ocean_current_velocity,ocean_current_direction&forecast_days=7&past_days=3&timezone=Europe%2FLisbon&cell_selection=sea`;
+      const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility&daily=sunrise,sunset,precipitation_probability_max&forecast_days=7&past_days=3&timezone=Europe%2FLisbon`;
+      const results=await Promise.allSettled([fetchJson(marineUrl,10000),fetchJson(weatherUrl,10000)]);
+      return json(res,200,{ok:true,marine:results[0].status==='fulfilled'?{ok:true}: {ok:false,error:results[0].reason?.message},weather:results[1].status==='fulfilled'?{ok:true}: {ok:false,error:results[1].reason?.message},version:VERSION});
+    }
     if(req.method==='GET' && u.pathname==='/api/spot'){
-      getSpotData(u).then(data=>json(res,200,data)).catch(e=>{ console.error('[SPOT ERROR]',e); if(!res.headersSent) json(res,e.statusCode||502,{error:e.message||'Erro interno',version:VERSION}); });
+      getSpotData(u).then(data=>{ console.log(`[SPOT OK] ${u.searchParams.get('name')||'Spot'}`); if(!res.headersSent) json(res,200,data); }).catch(e=>{ console.error('[SPOT ERROR]',e); if(!res.headersSent) json(res,e.statusCode||502,{error:e.message||'Erro interno',version:VERSION}); });
       return;
     }
     if(req.method==='GET'){ return serveStatic(res,u.pathname); }
