@@ -1,18 +1,19 @@
-# Spearo PT — protótipo web
+# Easyspearfishing
 
-## O que já está preparado
-- Interface mobile
-- 12 spots Foz → Póvoa
-- Ficha individual por spot
-- Backend Node/Express
-- Ligação real ao endpoint diário de oceanografia da IPMA
-- Campos de vento/energia/visibilidade ficam explicitamente indisponíveis quando a fonte não os fornece
+App de condições para pesca submarina na costa Foz do Douro → Póvoa de Varzim.
 
-## Executar
-1. Instalar Node.js 18+
-2. Na pasta do projeto: `npm install`
-3. Executar: `npm start`
-4. Abrir `http://localhost:3000`
+## Estrutura
+- `public/index.html` — interface
+- `server/index.js` — API e agregação dos dados
 
-## Próxima integração
-Para produção, ligar uma fonte/API permitida para dados horários (vento, rajadas, energia), marés e observações/estimativas de visibilidade. Não fazer scraping/bypass de proteções de sites.
+## Deploy
+- Node.js
+- Start command: `node server/index.js`
+- O servidor faz **uma chamada Marine + uma chamada Weather em lote para os 12 spots**, em vez de abrir 12 pedidos simultâneos.
+- Cache de 55 minutos.
+- `/api/health` — estado do serviço
+- `/api/test-sources` — teste rápido das fontes externas
+- `/api/forecast` — previsão agregada dos 12 spots
+
+## Fontes
+Open-Meteo Marine, Open-Meteo Weather e IPMA. A visibilidade subaquática é uma estimativa heurística; não são inventados valores de Copernicus.
