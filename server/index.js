@@ -9,7 +9,7 @@ const { URL } = require('url');
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const TZ = 'Europe/Lisbon';
-const VERSION = '2.0.0';
+const VERSION = '3.0.0';
 
 const spots = {
   'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', localProfile: 'estuário/foz', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
@@ -144,51 +144,56 @@ function batchUrl(base, params){
 async function fetchAllSources(){
   const marineBase='https://marine-api.open-meteo.com/v1/marine';
   const weatherBase='https://api.open-meteo.com/v1/forecast';
-  const marineModels=[
-    ['dwd_ewam','DWD EWAM',0.45,4],
-    ['ecmwf_wam','ECMWF WAM',0.35,7],
-    ['meteofrance_wave','Météo-France MFWAM',0.20,7]
-  ];
-  const weatherModels=[
-    ['icon_eu','DWD ICON-EU',0.60,7],
-    ['ecmwf_ifs','ECMWF IFS',0.40,7]
-  ];
-  const calls=[];
   const marineHourly='wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_period';
   const weatherHourly='wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover';
-  for(const [model,label,weight,days] of marineModels){
-    calls.push({kind:'marine',model,label,weight,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:marineHourly,past_days:'3',forecast_days:String(days),timezone:TZ,cell_selection:'sea',models:model})});
+
+  // Always obtain one dependable Best Match forecast first. This is the safety net:
+  // optional model comparisons must never make the whole application fail.
+  const primaryCalls=[
+    {kind:'marine',model:'best_match',label:'Marine Best Match',weight:1,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:marineHourly,current:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period',past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea'})},
+    {kind:'weather',model:'best_match',label:'Weather Best Match',weight:1,url:batchUrl(weatherBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:weatherHourly,current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',daily:'sunrise,sunset,precipitation_probability_max',past_days:'3',forecast_days:'7',timezone:TZ})},
+    {kind:'marineAux',model:'best_match',label:'Marine SST/Tide/Current',weight:1,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',current:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea'})},
+    {kind:'ipma',model:'ipma',label:'IPMA',weight:1,url:'https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day0.json'}
+  ];
+  const primary=await Promise.all(primaryCalls.map(c=>fetchJson(c.url,c.kind==='ipma'?8000:10000).then(value=>({ok:true,...c,value})).catch(error=>({ok:false,...c,error}))));
+  const marinePrimary=primary.find(x=>x.kind==='marine'&&x.ok);
+  const weatherPrimary=primary.find(x=>x.kind==='weather'&&x.ok);
+  if(!marinePrimary || !weatherPrimary){
+    const bad=primary.filter(x=>!x.ok).map(x=>`${x.label}: ${x.error?.message||'erro'}`).join('; ');
+    const err=new Error(`Fontes principais indisponíveis — ${bad}`); err.statusCode=502; throw err;
   }
-  for(const [model,label,weight,days] of weatherModels){
-    calls.push({kind:'weather',model,label,weight,url:batchUrl(weatherBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:weatherHourly,current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',daily:'sunrise,sunset,precipitation_probability_max',past_days:'3',forecast_days:String(days),timezone:TZ,models:model})});
-  }
-  calls.push({kind:'marineAux',model:'best_match',label:'Open-Meteo Marine Best Match',weight:1,url:batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',current:'sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea',models:'best_match'})});
-  calls.push({kind:'ipma',model:'ipma',label:'IPMA',weight:1,url:'https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day0.json'});
-  const results=await Promise.all(calls.map(c=>fetchJson(c.url,c.kind==='ipma'?12000:18000).then(value=>({ok:true,...c,value})).catch(error=>({ok:false,...c,error}))));
-  const marine=results.filter(x=>x.kind==='marine'&&x.ok);
-  const weather=results.filter(x=>x.kind==='weather'&&x.ok);
-  const marineAux=results.find(x=>x.kind==='marineAux'&&x.ok)?.value||null;
-  const ipma=results.find(x=>x.kind==='ipma'&&x.ok)?.value||null;
-  if(!marine.length){
-    try{
-      const fallback=await fetchJson(batchUrl(marineBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:marineHourly,past_days:'3',forecast_days:'7',timezone:TZ,cell_selection:'sea',models:'best_match'}),18000);
-      marine.push({kind:'marine',model:'best_match',label:'Marine Best Match (fallback)',weight:1,value:fallback,ok:true});
-    }catch(e){
-      const bad=results.filter(x=>!x.ok).map(x=>`${x.label}: ${x.error?.message||'erro'}`).join('; ');
-      const err=new Error(`Fonte marinha indisponível — ${bad}`); err.statusCode=502; throw err;
+
+  // Optional model comparison. It is deliberately non-blocking for reliability:
+  // if a provider/model is slow or temporarily unavailable, Best Match still serves the site.
+  const optional=[
+    ['marine','dwd_ewam','DWD EWAM',0.45,4,marineBase,marineHourly],
+    ['marine','ecmwf_wam','ECMWF WAM',0.35,7,marineBase,marineHourly],
+    ['marine','meteofrance_wave','Météo-France MFWAM',0.20,7,marineBase,marineHourly],
+    ['weather','icon_eu','DWD ICON-EU',0.60,5,weatherBase,weatherHourly],
+    ['weather','ecmwf_ifs','ECMWF IFS HRES',0.40,7,weatherBase,weatherHourly]
+  ];
+  const optionalResults=await Promise.all(optional.map(([kind,model,label,weight,days,base,hourly])=>{
+    const params={latitude:LATITUDES,longitude:LONGITUDES,hourly,past_days:'3',forecast_days:String(days),timezone:TZ,models:model};
+    if(kind==='marine') params.cell_selection='sea';
+    else { params.current='wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility'; params.daily='sunrise,sunset,precipitation_probability_max'; }
+    return fetchJson(batchUrl(base,params),6000).then(value=>({ok:true,kind,model,label,weight,value})).catch(error=>({ok:false,kind,model,label,weight,error}));
+  }));
+
+  const marine=[marinePrimary];
+  const weather=[weatherPrimary];
+  for(const r of optionalResults){
+    if(r.ok){
+      if(r.kind==='marine') marine.push(r); else weather.push(r);
     }
   }
-  if(!weather.length){
-    try{
-      const fallback=await fetchJson(batchUrl(weatherBase,{latitude:LATITUDES,longitude:LONGITUDES,hourly:weatherHourly,current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',daily:'sunrise,sunset,precipitation_probability_max',past_days:'3',forecast_days:'7',timezone:TZ,models:'best_match'}),18000);
-      weather.push({kind:'weather',model:'best_match',label:'Weather Best Match (fallback)',weight:1,value:fallback,ok:true});
-    }catch(e){
-      const bad=results.filter(x=>!x.ok).map(x=>`${x.label}: ${x.error?.message||'erro'}`).join('; ');
-      const err=new Error(`Fonte meteorológica indisponível — ${bad}`); err.statusCode=502; throw err;
-    }
-  }
-  return {marine,weather,marineAux,ipma,sourceStatus:results.map(x=>({label:x.label,kind:x.kind,ok:x.ok,error:x.ok?null:x.error?.message||'erro'}))};
+  const marineAux=primary.find(x=>x.kind==='marineAux'&&x.ok)?.value||null;
+  const ipma=primary.find(x=>x.kind==='ipma'&&x.ok)?.value||null;
+  return {
+    marine,weather,marineAux,ipma,
+    sourceStatus:[...primary,...optionalResults].map(x=>({label:x.label,kind:x.kind,model:x.model,ok:x.ok,error:x.ok?null:x.error?.message||'erro'}))
+  };
 }
+
 function asLocationArray(value){ return Array.isArray(value)?value:[value]; }
 function payloadArray(value){ return Array.isArray(value)?value:[value]; }
 function findPayloadForSpot(value,spot,index){
@@ -261,7 +266,7 @@ async function getAllForecast(){
     const weatherModelsBySpot=SPOT_LIST.map((spot,i)=>src.weather.map(m=>({label:m.label,model:m.model,weight:m.weight,payload:findPayloadForSpot(m.value,spot,i)})).filter(x=>x.payload));
     const spotsOut=SPOT_LIST.map((spot,i)=>{
       const mm=marineModelsBySpot[i], ww=weatherModelsBySpot[i];
-      const primaryMarine=mm.find(x=>x.model==='dwd_ewam')||mm[0]; const primaryWeather=ww.find(x=>x.model==='icon_eu')||ww[0];
+      const primaryMarine=mm.find(x=>x.model==='best_match')||mm.find(x=>x.model==='dwd_ewam')||mm[0]; const primaryWeather=ww.find(x=>x.model==='best_match')||ww.find(x=>x.model==='icon_eu')||ww[0];
       const marine=buildBlendedMarine(mm,primaryMarine.payload); const weather=buildBlendedWeather(ww,primaryWeather.payload);
       const aux=findPayloadForSpot(src.marineAux,spot,i);
       return buildSpotDataFromBlended(spot.name,spot,marine,weather,src.ipma,mm,ww,aux);
@@ -303,13 +308,13 @@ function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMa
   const currentH=hourly.find(h=>h.time===currentTime)||hourly[0]||null;
   const auxCurrentIdx=nearestIndex(auxTimes,currentTime,90);
   const current={
-    wave:m.current?.wave, waveDirection:m.current?.waveDirection, period:m.current?.period,
-    swell:m.current?.swell,swellDirection:m.current?.swellDirection,swellPeriod:m.current?.swellPeriod,
+    wave:finite(currentH?.wave), waveDirection:finite(currentH?.waveDirection), period:finite(currentH?.period),
+    swell:finite(currentH?.swell),swellDirection:finite(currentH?.swellDirection),swellPeriod:finite(currentH?.swellPeriod),
     waterTemp:auxCurrentIdx>=0?finite(auxMarine?.hourly?.sea_surface_temperature?.[auxCurrentIdx]):null,
     tideLevel:auxCurrentIdx>=0?finite(auxMarine?.hourly?.sea_level_height_msl?.[auxCurrentIdx]):null,
     current:auxCurrentIdx>=0?finite(auxMarine?.hourly?.ocean_current_velocity?.[auxCurrentIdx]):null,
     currentDirection:auxCurrentIdx>=0?finite(auxMarine?.hourly?.ocean_current_direction?.[auxCurrentIdx]):null,
-    wind:w.current?.wind,windDirection:w.current?.windDirection,gust:w.current?.gust,atmosphericVisibility:w.current?.visibility
+    wind:finite(currentH?.wind),windDirection:finite(currentH?.windDirection),gust:finite(currentH?.gust),atmosphericVisibility:finite(currentH?.visibility)
   };
   const currentVis=currentH?.visibility||null;
   const energy=relativeEnergy(current.wave,current.period);
@@ -329,6 +334,7 @@ function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMa
     if(candidate.length>=2) window={start:candidate[0].time.slice(11,16),end:candidate[candidate.length-1].time.slice(11,16),score:Number((candidate.reduce((a,h)=>a+h.score,0)/candidate.length).toFixed(1))};
   }
   let ipmaRef=null,modelAgreement='Não disponível';
+  const expectedMarine=3, expectedWeather=2;
   if(ip){
     const rows=Array.isArray(ip)?ip:(ip.data||[]),ref=rows.find(x=>Number(x.globalIdLocal)===1130826);
     if(ref){
@@ -343,6 +349,14 @@ function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMa
     wind:spread(weatherModels.map(x=>atTime(x.payload?.hourly,currentH?.time||currentTime,'wind_speed_10m'))),
     waveDirection:directionSpread(marineModels.map(x=>atTime(x.payload?.hourly,currentH?.time||currentTime,'wave_direction')).filter(Number.isFinite))
   };
+  const waveSpread=Number.isFinite(modelSpread.wave)?modelSpread.wave:null;
+  const windSpread=Number.isFinite(modelSpread.wind)?modelSpread.wind:null;
+  let agreementConfidence='baixa';
+  if(marineModels.length>=2 && weatherModels.length>=2 && Number.isFinite(waveSpread) && Number.isFinite(windSpread)){
+    if(waveSpread<=0.20 && windSpread<=2.5) agreementConfidence='alta';
+    else if(waveSpread<=0.40 && windSpread<=5) agreementConfidence='média';
+  }
+  if(modelAgreement==='Não disponível' && agreementConfidence!=='baixa') modelAgreement=agreementConfidence==='alta'?'Boa concordância entre modelos':'Concordância moderada entre modelos';
   const daily=(w.daily?.time||[]).filter(date=>date>=today).slice(0,7).map(date=>{
     const rows=hourly.filter(h=>h.time?.startsWith(date)&&h.score!=null&&h.daylight);
     if(!rows.length)return {date,label:dayLabel(date,today),bestScore:null,bestTime:null,minWave:null,maxWave:null,minWind:null,maxWind:null,minVisibility:null,maxVisibility:null,trend:null};
@@ -354,7 +368,7 @@ function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMa
   const satellite=satelliteInfo();
   return {
     version:VERSION,name,lat:s.lat,lon:s.lon,exposure:s.exposure,exposureText:s.protection,localProfile:s.localProfile,
-    score:scoreData?.score??null,scoreVersion:'Spearo Score 5.1 — multi-model + exposição local',scoreComponents:scoreData?.components||[],scoreReasons:scoreData?{positives:scoreData.positives,negatives:scoreData.negatives}:{positives:[],negatives:[]},
+    score:scoreData?.score??null,scoreVersion:'Spearo Score 6.0 — multi-model + exposição local + confiança',scoreComponents:scoreData?.components||[],scoreReasons:scoreData?{positives:scoreData.positives,negatives:scoreData.negatives}:{positives:[],negatives:[]},
     status,statusEmoji,statusText,decision:scoreData?.score>=8.5?'SIM':scoreData?.score>=7?'TALVEZ':scoreData?.score>=5?'EXIGENTE':'NÃO',
     wave:current.wave!=null?`${fmt(current.wave)} m`:'—',period:current.period!=null?`${fmt(current.period)} s`:'—',direction:degToCompass(current.waveDirection),waterTemp:current.waterTemp!=null?`${fmt(current.waterTemp)} °C`:'—',
     wind:current.wind!=null?`${fmt(current.wind)} km/h ${degToCompass(current.windDirection)}`:'—',gust:current.gust!=null?`${fmt(current.gust)} km/h`:'—',energy:energy!=null?`~${fmt(energy)} (indicador relativo)`:'—',
