@@ -9,7 +9,7 @@ const { URL } = require('url');
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const TZ = 'Europe/Lisbon';
-const VERSION = '3.1.1';
+const VERSION = '3.1.2';
 
 const spots = {
   'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', localProfile: 'estuário/foz', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
@@ -320,7 +320,7 @@ function buildSpotDataFromBlended(name,s,m,w,ip,marineModels,weatherModels,auxMa
   const energy=relativeEnergy(current.wave,current.period);
   const scoreData=baseSpearoScore({...current,energy,spot:s,visibilityScore:currentVis?.score});
   const [statusEmoji,status,statusText]=classify(scoreData?.score??null);
-  const today=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const today=(w.daily?.time||[])[0]||(hourly[0]?.time||'').slice(0,10);
   const future=hourly.filter(h=>h.time&&new Date(h.time)>=new Date()&&h.score!=null);
   const daylightFuture=future.filter(h=>h.daylight);
   const best=daylightFuture.slice().sort((a,b)=>b.score-a.score)[0]||null;
@@ -393,10 +393,10 @@ async function getSpotData(reqUrl){
 }
 
 
-const DATA_DIR=path.join(__dirname,'../data');
-const OBS_FILE=path.join(DATA_DIR,'observations.json');
-const VIS_LEVELS=['Muito boa','Boa','Média','Fraca','Muito fraca'];
-const WATER_STATES=['Limpa','Ligeiramente turva','Turva','Muito turva'];
+const DATA_DIR = path.join(__dirname, '../data');
+const OBS_FILE = path.join(DATA_DIR, 'observations.json');
+const VIS_LEVELS = ['Muito boa','Boa','Média','Fraca','Muito fraca'];
+const WATER_STATES = ['Limpa','Ligeiramente turva','Turva','Muito turva'];
 function loadObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});if(fs.existsSync(OBS_FILE)){const v=JSON.parse(fs.readFileSync(OBS_FILE,'utf8'));return Array.isArray(v)?v:[];}}catch(e){console.error('[OBS LOAD]',e.message)}return[]}
 let observations=loadObservations();
 function saveObservations(){try{fs.mkdirSync(DATA_DIR,{recursive:true});fs.writeFileSync(OBS_FILE,JSON.stringify(observations.slice(-1000),null,2))}catch(e){console.error('[OBS SAVE]',e.message)}}
@@ -429,18 +429,19 @@ const server=http.createServer(async (req,res)=>{
       const data=await getSpotData(u);
       return json(res,200,data);
     }
-
-    if(req.method==='GET'&&u.pathname==='/api/observations'){
+    if(req.method==='GET' && u.pathname==='/api/observations'){
       const spotName=u.searchParams.get('spot');
-      if(!spots[spotName])return json(res,400,{error:'Spot inválido'});
+      if(!spots[spotName]) return json(res,400,{error:'Spot inválido'});
       return json(res,200,{spot:spotName,observations:recentObservations(spotName),summary:observationSummary(spotName)});
     }
-    if(req.method==='POST'&&u.pathname==='/api/observations'){
+    if(req.method==='POST' && u.pathname==='/api/observations'){
       const body=await readObservationBody(req),spotName=String(body.spot||'');
-      if(!spots[spotName])return json(res,400,{error:'Spot inválido'});
-      if(!VIS_LEVELS.includes(body.visibilityLabel))return json(res,400,{error:'Escolhe um nível de visibilidade.'});
-      let meters=null;if(body.meters!==undefined&&body.meters!==null&&String(body.meters).trim()!==''){meters=Number(body.meters);if(!Number.isFinite(meters)||meters<0||meters>30)return json(res,400,{error:'Visibilidade em metros inválida.'});meters=Number(meters.toFixed(1))}
-      const waterState=WATER_STATES.includes(body.waterState)?body.waterState:null,note=String(body.note||'').trim().slice(0,240);
+      if(!spots[spotName]) return json(res,400,{error:'Spot inválido'});
+      if(!VIS_LEVELS.includes(body.visibilityLabel)) return json(res,400,{error:'Escolhe um nível de visibilidade.'});
+      let meters=null;
+      if(body.meters!==undefined&&body.meters!==null&&String(body.meters).trim()!==''){meters=Number(body.meters);if(!Number.isFinite(meters)||meters<0||meters>30)return json(res,400,{error:'Visibilidade em metros inválida.'});meters=Number(meters.toFixed(1));}
+      const waterState=WATER_STATES.includes(body.waterState)?body.waterState:null;
+      const note=String(body.note||'').trim().slice(0,240);
       const observation={id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,spot:spotName,visibilityLabel:body.visibilityLabel,meters,waterState,note,createdAt:new Date().toISOString()};
       observations.push(observation);saveObservations();return json(res,201,{ok:true,observation,summary:observationSummary(spotName)});
     }
