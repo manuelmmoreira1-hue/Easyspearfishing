@@ -6,7 +6,7 @@ const { URL } = require('url');
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const TZ = 'Europe/Lisbon';
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 
 const spots = {
   'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
@@ -25,7 +25,7 @@ const spots = {
 
 function json(res, status, data) {
   const body = JSON.stringify(data);
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Access-Control-Allow-Origin': '*', 'Connection': 'close' });
   res.end(body);
 }
 function finite(x) { return Number.isFinite(Number(x)) ? Number(x) : null; }
@@ -53,7 +53,7 @@ function baseSpearoScore({wave,period,wind,gust,energy,swellDirection,waveDirect
   if(!c.length)return null; const tw=c.reduce((a,x)=>a+x.weight,0); const score=Number((c.reduce((a,x)=>a+x.score*x.weight,0)/tw).toFixed(1)); const sorted=c.slice().sort((a,b)=>a.score-b.score); return {score,components:c,positives:sorted.filter(x=>x.score>=8.5).slice(-3).map(x=>x.name),negatives:sorted.filter(x=>x.score<7).slice(0,3).map(x=>x.name)};
 }
 function classify(s){ if(s==null)return ['🟡','Dados insuficientes','Dados insuficientes para classificar.']; if(s>=8.5)return ['🟢','Muito favorável','Condições modeladas favoráveis. Confirma o mar e a visibilidade no local.']; if(s>=7)return ['🟡','Razoável','Condições utilizáveis no modelo, mas confirma a visibilidade e as condições locais.']; if(s>=5)return ['🟠','Exigente','Há fatores que podem dificultar a pesca; avalia localmente antes de entrar.']; return ['🔴','Desfavorável','O modelo indica condições exigentes; não uses este indicador isoladamente.']; }
-async function fetchJson(url){ const c=new AbortController(); const timer=setTimeout(()=>c.abort(),18000); try{ const r=await fetch(url,{signal:c.signal,headers:{'User-Agent':'Easyspearfishing/0.4'}}); if(!r.ok)throw new Error(`HTTP ${r.status}`); return await r.json(); } finally{clearTimeout(timer);} }
+async function fetchJson(url){ const c=new AbortController(); const timer=setTimeout(()=>c.abort(),18000); try{ const r=await fetch(url,{signal:c.signal,headers:{'User-Agent':'Easyspearfishing/0.5','Accept':'application/json'}}); if(!r.ok)throw new Error(`HTTP ${r.status}`); return await r.json(); } finally{clearTimeout(timer);} }
 
 // Visibility model: deliberately an estimate, not a measured underwater-visibility product.
 // It follows the same general logic used by coastal-clarity models: recent wave stirring,
@@ -153,4 +153,34 @@ async function getSpotData(reqUrl){
 }
 
 function serveStatic(res,pathname){const clean=pathname==='/'?'index.html':pathname.replace(/^\/+/, '');const filePath=path.resolve(PUBLIC_DIR,clean);if(!filePath.startsWith(path.resolve(PUBLIC_DIR)))return json(res,403,{error:'Acesso negado'});if(!fs.existsSync(filePath)||!fs.statSync(filePath).isFile())return json(res,404,{error:'Ficheiro não encontrado'});const ext=path.extname(filePath);const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'};res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream','Cache-Control':'no-cache'});fs.createReadStream(filePath).pipe(res);}
-const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,`http://${req.headers.host||'localhost'}`);if(req.method==='GET'&&u.pathname==='/api/health')return json(res,200,{ok:true,service:'Easyspearfishing',version:VERSION});if(req.method==='GET'&&u.pathname==='/api/spot')return json(res,200,await getSpotData(u));if(req.method==='GET')return serveStatic(res,u.pathname);return json(res,405,{error:'Método não permitido'});}catch(e){console.error('Request error:',e);return json(res,e.statusCode||502,{error:e.message||'Erro interno'});}});server.on('error',e=>{console.error('Server error:',e);process.exitCode=1;});server.listen(PORT,'0.0.0.0',()=>console.log(`Easyspearfishing LIVE v${VERSION} on 0.0.0.0:${PORT}`));
+const server=http.createServer((req,res)=>{
+  const started=Date.now();
+  res.setHeader('X-Easyspearfishing-Version', VERSION);
+  try {
+    const u=new URL(req.url,`http://${req.headers.host||'localhost'}`);
+    console.log(`[REQ] ${req.method} ${u.pathname}`);
+    if(req.method==='GET' && u.pathname==='/api/health'){
+      console.log('[HEALTH] responding');
+      return json(res,200,{ok:true,service:'Easyspearfishing',version:VERSION,time:new Date().toISOString()});
+    }
+    if(req.method==='GET' && u.pathname==='/api/ping'){
+      return json(res,200,{ok:true,pong:true,version:VERSION});
+    }
+    if(req.method==='GET' && u.pathname==='/api/spot'){
+      getSpotData(u).then(data=>json(res,200,data)).catch(e=>{ console.error('[SPOT ERROR]',e); if(!res.headersSent) json(res,e.statusCode||502,{error:e.message||'Erro interno',version:VERSION}); });
+      return;
+    }
+    if(req.method==='GET'){ return serveStatic(res,u.pathname); }
+    return json(res,405,{error:'Método não permitido'});
+  } catch(e) {
+    console.error('[REQUEST ERROR]',e);
+    if(!res.headersSent) return json(res,e.statusCode||502,{error:e.message||'Erro interno',version:VERSION});
+  } finally {
+    console.log(`[REQ DONE] ${req.method} ${req.url} ${Date.now()-started}ms`);
+  }
+});
+server.keepAliveTimeout=5000;
+server.headersTimeout=10000;
+server.requestTimeout=35000;
+server.on('error',e=>{console.error('[SERVER ERROR]',e);process.exitCode=1;});
+server.listen(PORT,'0.0.0.0',()=>console.log(`Easyspearfishing LIVE v${VERSION} on 0.0.0.0:${PORT}`));
