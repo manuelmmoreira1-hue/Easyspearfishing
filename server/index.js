@@ -47,31 +47,83 @@ function calcEnergy(wave, period) {
   return 0.49 * wave * wave * period;
 }
 
-function score(wave, period, wind, gust, energy) {
-  if (![wave, period, wind, gust].every(Number.isFinite)) return null;
-  let s = 10;
-  if (wave > 0.7) s -= Math.min(4, (wave - 0.7) * 3.0);
-  if (wave > 1.5) s -= 1.5;
-  if (wave > 2.0) s -= 2.0;
-  if (period < 5) s -= 0.5;
-  if (period > 12) s -= 0.3;
-  if (wind > 8) s -= Math.min(2.5, (wind - 8) * 0.18);
-  if (gust > 18) s -= Math.min(1.5, (gust - 18) * 0.12);
-  if (gust > 28) s -= 1.0;
-  if (Number.isFinite(energy)) {
-    if (energy > 15) s -= Math.min(2.0, (energy - 15) * 0.10);
-    if (energy > 25) s -= 1.5;
+function clamp(v, min=0, max=10) { return Math.max(min, Math.min(max, v)); }
+
+// Spearo Score 2.0 — heuristic specifically for shore-based spearfishing conditions.
+// It is an indicator, not a safety certification. Underwater visibility is NOT scored
+// because the available APIs do not provide a trustworthy in-water visibility value.
+function spearoScore({wave, period, wind, gust, energy, swellDirection, spot, current, waterTemp}) {
+  const parts = [];
+  let total = 0;
+  let weight = 0;
+  const add = (name, value, w, reasonGood, reasonBad) => {
+    if (!Number.isFinite(value)) return;
+    total += value * w; weight += w;
+    parts.push({name, value, weight:w, reason: value >= 7 ? reasonGood : reasonBad});
+  };
+
+  // Wave height: moderate shore conditions score higher than large surf.
+  let waveScore = 10;
+  if (wave == null) waveScore = null;
+  else if (wave <= 0.55) waveScore = 8.0;
+  else if (wave <= 0.85) waveScore = 10;
+  else if (wave <= 1.10) waveScore = 9.0;
+  else if (wave <= 1.35) waveScore = 7.5;
+  else if (wave <= 1.60) waveScore = 5.5;
+  else if (wave <= 2.00) waveScore = 3.0;
+  else waveScore = 1.0;
+  add('Onda', waveScore, 25, 'altura de onda dentro de uma faixa favorável', 'altura de onda aumenta a exigência');
+
+  // Period: moderate period is preferred; very long periods can carry more power to shore.
+  let periodScore = period == null ? null : period < 5 ? 4 : period < 6.5 ? 7 : period <= 10.5 ? 10 : period <= 12 ? 8 : period <= 14 ? 6 : 4;
+  add('Período', periodScore, 10, 'período moderado/favorável', 'período elevado pode trazer sets mais potentes');
+
+  // Wind: lighter wind generally means cleaner surface conditions.
+  let windScore = wind == null ? null : wind <= 5 ? 10 : wind <= 10 ? 9 : wind <= 15 ? 7 : wind <= 20 ? 5 : wind <= 28 ? 3 : 1;
+  add('Vento', windScore, 15, 'vento fraco/moderado', 'vento aumenta a perturbação da superfície');
+
+  let gustScore = gust == null ? null : gust <= 10 ? 10 : gust <= 18 ? 9 : gust <= 25 ? 7 : gust <= 32 ? 5 : 2;
+  add('Rajadas', gustScore, 10, 'rajadas controladas', 'rajadas podem piorar rapidamente a superfície');
+
+  let energyScore = energy == null ? null : energy <= 5 ? 10 : energy <= 8 ? 9 : energy <= 12 ? 7 : energy <= 16 ? 5 : energy <= 22 ? 3 : 1;
+  add('Energia', energyScore, 15, 'energia relativa baixa/moderada', 'energia relativa elevada');
+
+  // Spot-specific exposure is deliberately explicit and approximate.
+  if (Number.isFinite(swellDirection) && spot?.exposure != null) {
+    const diff = Math.abs(((swellDirection - spot.exposure + 540) % 360) - 180);
+    let dirScore = diff <= 35 ? 5 : diff <= 70 ? 7.5 : diff <= 110 ? 9 : 6.5;
+    // For shore spearfishing, a swell arriving close to the beach normal is generally more exposed;
+    // the model therefore rewards oblique/off-axis swell rather than directly-onshore swell.
+    add('Direção do swell', dirScore, 10, 'swell relativamente oblíquo à exposição do spot', 'swell mais alinhado com a exposição do spot');
   }
-  return Math.max(0, Math.min(10, Number(s.toFixed(1))));
+
+  if (Number.isFinite(current)) {
+    let currentScore = current <= 0.15 ? 10 : current <= 0.30 ? 8 : current <= 0.50 ? 6 : current <= 0.80 ? 4 : 2;
+    add('Corrente', currentScore, 10, 'corrente modelada baixa/moderada', 'corrente modelada elevada');
+  }
+
+  if (Number.isFinite(waterTemp)) {
+    // Water temperature has a small weight: comfort/equipment relevance, not safety.
+    let tempScore = waterTemp >= 15 && waterTemp <= 19 ? 10 : waterTemp >= 13 && waterTemp < 15 ? 8 : waterTemp > 19 && waterTemp <= 21 ? 8 : 6;
+    add('Água', tempScore, 5, 'temperatura dentro da faixa habitual do spot', 'temperatura menos confortável para a época');
+  }
+
+  if (!weight) return null;
+  const score = Number((total / weight).toFixed(1));
+  const sorted = parts.slice().sort((a,b)=>a.value-b.value);
+  const negatives = sorted.filter(p=>p.value < 7).slice(0,3).map(p=>p.name);
+  const positives = sorted.filter(p=>p.value >= 8.5).slice(-3).map(p=>p.name);
+  return {score, negatives, positives, components:parts};
 }
 
 function classify(s) {
-  if (s == null) return ['🟡', 'Sem classificação'];
-  if (s >= 8.5) return ['🟢', 'Condições favoráveis'];
-  if (s >= 7) return ['🟡', 'Condições razoáveis'];
-  if (s >= 5) return ['🟠', 'Exige atenção'];
-  return ['🔴', 'Mar exigente'];
+  if (s == null) return ['🟡', 'Dados insuficientes', 'Não há dados suficientes para classificar.'];
+  if (s >= 8.5) return ['🟢', 'Condições favoráveis', 'Condições modeladas favoráveis; confirma sempre o estado real do mar antes de entrar.'];
+  if (s >= 7) return ['🟡', 'Condições razoáveis', 'Pode existir uma janela melhor; confirma o mar e a visibilidade local.'];
+  if (s >= 5) return ['🟠', 'Condições exigentes', 'O modelo indica fatores que podem dificultar a pesca; avalia localmente antes de entrar.'];
+  return ['🔴', 'Condições muito exigentes', 'O modelo indica mar/vento/corrente exigentes; não uses este indicador sozinho para decidir uma entrada.'];
 }
+
 
 async function fetchJson(url) {
   const controller = new AbortController();
@@ -86,6 +138,17 @@ async function fetchJson(url) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function spotExposure(name) {
+  // Approximate shoreline/exposure bearings used only as a transparent heuristic.
+  // They should be refined later with mapped coastline orientation for each exact entry point.
+  const map = {
+    'Foz do Douro': 285, 'Castelo do Queijo': 285, 'Matosinhos': 290, 'Leça da Palmeira': 295,
+    'Marreco': 300, 'Perafita': 300, 'Angeiras': 300, 'Labruge': 305,
+    'Mindelo': 305, 'Azurara': 300, 'Vila do Conde': 300, 'Póvoa de Varzim': 295
+  };
+  return map[name] ?? 300;
 }
 
 async function getSpotData(reqUrl) {
@@ -115,6 +178,7 @@ async function getSpotData(reqUrl) {
     const gust = Number(wh.wind_gusts_10m?.[i]);
     const atmosphericVisibility = Number(wh.visibility?.[i]);
     const energy = calcEnergy(wave, period);
+    const ss = spearoScore({wave, period, wind, gust, energy, swellDirection: Number(mh.swell_wave_direction?.[i]), spot: {exposure: spotExposure(name)}, current: Number(mh.ocean_current_velocity?.[i]), waterTemp: Number(mh.sea_surface_temperature?.[i])});
     hourly.push({
       time: mh.time[i],
       wave: Number.isFinite(wave) ? wave : null,
@@ -133,7 +197,7 @@ async function getSpotData(reqUrl) {
       current: Number(mh.ocean_current_velocity?.[i]),
       currentDirection: Number(mh.ocean_current_direction?.[i]),
       energy,
-      score: score(wave, period, wind, gust, energy)
+      score: ss ? ss.score : null, scoreReasons: ss ? {positives:ss.positives, negatives:ss.negatives} : null
     });
   }
 
@@ -155,8 +219,9 @@ async function getSpotData(reqUrl) {
   };
 
   const energy = calcEnergy(current.wave, current.period);
-  const s = score(current.wave, current.period, current.wind, current.gust, energy);
-  const [statusEmoji, status] = classify(s);
+  const scoreData = spearoScore({ wave: current.wave, period: current.period, wind: current.wind, gust: current.gust, energy, swellDirection: current.swellDirection, spot: {exposure: spotExposure(name)}, current: current.current, waterTemp: current.waterTemp });
+  const s = scoreData ? scoreData.score : null;
+  const [statusEmoji, status, statusText] = classify(s);
   const first24 = hourly.slice(0, 24);
   const best = first24.filter(h => h.score != null).sort((a, b) => b.score - a.score)[0] || null;
 
@@ -165,7 +230,10 @@ async function getSpotData(reqUrl) {
     source: 'Open-Meteo Marine + Open-Meteo Weather',
     modelNote: 'Ondulação e variáveis oceânicas por modelos marinhos; vento/rajadas por previsão meteorológica. Resolução marinha nominal ~5–8 km consoante o modelo/camada.',
     score: s,
-    status, statusEmoji,
+    scoreVersion: 'Spearo Score 2.0',
+    scoreComponents: scoreData ? scoreData.components : [],
+    scoreReasons: scoreData ? { positives: scoreData.positives, negatives: scoreData.negatives } : {positives:[], negatives:[]},
+    status, statusEmoji, statusText,
     wave: Number.isFinite(current.wave) ? `${fmt(current.wave)} m` : '—',
     period: Number.isFinite(current.period) ? `${fmt(current.period)} s` : '—',
     direction: degToCompass(current.waveDirection),
@@ -185,7 +253,7 @@ async function getSpotData(reqUrl) {
     bestWindowTime: best ? best.time : '',
     bestWindowShort: best ? `${best.time.slice(11,16)} — ${best.score}/10` : '—',
     hourly: first24,
-    note: 'Score provisório para apoio à decisão, baseado em altura/período da onda, vento, rajadas e um indicador relativo de energia. Não é uma certificação de segurança. A visibilidade atmosférica não representa visibilidade subaquática.'
+    note: 'Spearo Score 2.0: indicador heurístico para pesca submarina de costa, combinando onda, período, vento, rajadas, energia relativa, direção do swell, corrente e temperatura. A exposição de cada spot é aproximada e deve ser refinada. A visibilidade subaquática não é pontuada porque não há medição fiável disponível nesta API. Não é uma certificação de segurança.'
   };
 }
 
