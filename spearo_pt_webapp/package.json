@@ -1,11 +1,1 @@
-{
-  "name": "spearo-pt",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "start": "node server/index.js"
-  },
-  "dependencies": {
-    "express": "^5.1.0"
-  }
-}
+{"name":"easyspearfishing","version":"0.5.0","private":true,"scripts":{"start":"node server/index.js"}}
