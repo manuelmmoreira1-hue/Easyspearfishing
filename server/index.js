@@ -9,7 +9,7 @@ const { URL } = require('url');
 const PORT = Number(process.env.PORT) || 10000;
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const TZ = 'Europe/Lisbon';
-const VERSION = '3.1.3';
+const VERSION = '3.1.4';
 
 const spots = {
   'Foz do Douro': { lat: 41.148, lon: -8.675, exposure: 285, protection: 'aberta a W/NW', camera: { label: 'Beachcam Foz / Porto', url: 'https://back-office.beachcam.pt/livecams/' } },
@@ -129,12 +129,30 @@ function satelliteInfo(){
 }
 
 
+const DATA_DIR = path.join(__dirname, '../data');
+
 const SPOT_LIST = Object.entries(spots).map(([name, s]) => ({name, ...s}));
 const LATITUDES = SPOT_LIST.map(s => s.lat).join(',');
 const LONGITUDES = SPOT_LIST.map(s => s.lon).join(',');
 const CACHE_TTL_MS = 55 * 60 * 1000;
+const FORECAST_CACHE_FILE = path.join(DATA_DIR, 'forecast-cache.json');
 let forecastCache = null;
 let forecastInFlight = null;
+function loadForecastCache(){
+  try {
+    if(!fs.existsSync(FORECAST_CACHE_FILE)) return null;
+    const saved=JSON.parse(fs.readFileSync(FORECAST_CACHE_FILE,'utf8'));
+    if(saved && saved.time && saved.data) return saved;
+  } catch(e){ console.error('[FORECAST CACHE LOAD]', e.message); }
+  return null;
+}
+function saveForecastCache(data){
+  try {
+    fs.mkdirSync(DATA_DIR,{recursive:true});
+    fs.writeFileSync(FORECAST_CACHE_FILE,JSON.stringify({time:Date.now(),data}));
+  } catch(e){ console.error('[FORECAST CACHE SAVE]', e.message); }
+}
+forecastCache=loadForecastCache();
 
 function batchUrl(base, params){
   const q = new URLSearchParams(params);
@@ -148,8 +166,14 @@ async function fetchAllSources(){
     current:'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',
     past_days:'3', forecast_days:'7', timezone:TZ, cell_selection:'sea'
   });
+  // Weather is requested once for a representative coastal point instead of
+  // once per spot. Open-Meteo supports batched coordinates, but its free quota
+  // is sensitive to the number of requested locations/variables. Our 12 spots
+  // are close enough that one coastal weather grid cell is a safer and more
+  // sustainable wind/rain reference; Marine remains spot-specific.
+  const WEATHER_REF = { lat: 41.25, lon: -8.72 };
   const weatherUrl=batchUrl('https://api.open-meteo.com/v1/forecast',{
-    latitude:LATITUDES, longitude:LONGITUDES,
+    latitude:String(WEATHER_REF.lat), longitude:String(WEATHER_REF.lon),
     hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,cloud_cover',
     current:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility',
     daily:'sunrise,sunset,precipitation_probability_max',
@@ -183,7 +207,17 @@ async function getAllForecast(){
   if(forecastCache && now-forecastCache.time<CACHE_TTL_MS) return forecastCache.data;
   if(forecastInFlight) return forecastInFlight;
   forecastInFlight=(async()=>{
-    const src=await fetchAllSources();
+    let src;
+    try {
+      src=await fetchAllSources();
+    } catch(err) {
+      const stale=forecastCache?.data;
+      if(stale?.spots?.length){
+        console.warn('[FORECAST FALLBACK] Using last successful forecast:', err.message);
+        return {...stale, stale:true, staleSince:forecastCache.time, warning:`Dados externos temporariamente indisponíveis: ${err.message}`};
+      }
+      throw err;
+    }
     const marineArr=asLocationArray(src.marine);
     const weatherArr=asLocationArray(src.weather);
     const spotsOut=SPOT_LIST.map((spot,i)=>{
@@ -194,6 +228,7 @@ async function getAllForecast(){
     });
     const data={version:VERSION,updatedAt:new Date().toISOString(),count:spotsOut.length,spots:spotsOut};
     forecastCache={time:Date.now(),data};
+    saveForecastCache(data);
     return data;
   })().finally(()=>{forecastInFlight=null;});
   return forecastInFlight;
@@ -219,7 +254,6 @@ function buildSpotDataFromPayload(name,s,m,w,ip){
 
 
 
-const DATA_DIR = path.join(__dirname, '../data');
 const OBS_FILE = path.join(DATA_DIR, 'observations.json');
 const VIS_LEVELS = ['Muito boa','Boa','Média','Fraca','Muito fraca'];
 const WATER_STATES = ['Limpa','Ligeiramente turva','Turva','Muito turva'];
@@ -251,7 +285,7 @@ const server=http.createServer(async (req,res)=>{
     if(req.method==='GET' && u.pathname==='/api/health') return json(res,200,{ok:true,service:'Easyspearfishing',version:VERSION,time:new Date().toISOString(),cached:Boolean(forecastCache)});
     if(req.method==='GET' && u.pathname==='/api/ping') return json(res,200,{ok:true,pong:true,version:VERSION});
     if(req.method==='GET' && u.pathname==='/api/test-sources'){
-      const lat='41.235,41.182', lon='-8.724,-8.705';
+      const lat='41.25', lon='-8.72';
       const marineUrl=batchUrl('https://marine-api.open-meteo.com/v1/marine',{latitude:lat,longitude:lon,hourly:'wave_height',forecast_days:'1',timezone:TZ,cell_selection:'sea'});
       const weatherUrl=batchUrl('https://api.open-meteo.com/v1/forecast',{latitude:lat,longitude:lon,hourly:'wind_speed_10m',forecast_days:'1',timezone:TZ});
       const results=await Promise.allSettled([fetchJson(marineUrl,10000),fetchJson(weatherUrl,10000)]);

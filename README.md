@@ -17,3 +17,9 @@ App de condições para pesca submarina na costa Foz do Douro → Póvoa de Varz
 
 ## Fontes
 Open-Meteo Marine, Open-Meteo Weather e IPMA. A visibilidade subaquática é uma estimativa heurística; não são inventados valores de Copernicus.
+
+
+## V3.1.4
+- Weather API reduzido para uma única célula costeira de referência para evitar consumo excessivo da quota gratuita.
+- Cache persistente do último forecast válido e fallback temporário quando uma fonte externa responde HTTP 429.
+- Marine continua a ser solicitado por spot.
