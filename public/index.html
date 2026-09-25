@@ -74,6 +74,7 @@ Easyspearfishing · Dados meteorológicos/marinhos por modelos Open-Meteo. A vis
 </footer>
 
 <script>
+(function(){try{if(!sessionStorage.getItem('es_visit_sent')){fetch('/api/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',keepalive:true}).finally(()=>sessionStorage.setItem('es_visit_sent','1'));}}catch(e){}})();
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let spots=[],selected=null,filter='all';
 
