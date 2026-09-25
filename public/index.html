@@ -145,13 +145,15 @@ function renderDetail(){
     const best7=(s.dailyForecast||[]).filter(d=>Number(d.score)>=4).sort((a,b)=>Number(b.score)-Number(a.score))[0];
     const reasons=[];
     const e=Number(s.energy); const w=Number.parseFloat(String(s.wave)); const wind=Number.parseFloat(String(s.wind)); const visM=s.underwaterVisibilityPrediction?.estimatedMeters; const pen=Number(s.historyModel?.currentPenalty||0);
-    if(Number.isFinite(e)) reasons.push(e<200?'Energia baixa — favorável':e<300?'Energia aceitável':'Energia elevada — penaliza');
-    if(Number.isFinite(w)) reasons.push(w<=1?'Ondulação baixa':w<=1.5?'Ondulação moderada':'Ondulação elevada');
-    if(Number.isFinite(wind)) reasons.push(wind<=12?'Vento fraco':wind<=20?'Vento moderado':'Vento forte');
-    if(Number.isFinite(visM)) reasons.push(visM>=3?'Visibilidade estimada boa':visM>=2?'Visibilidade estimada razoável':'Visibilidade estimada baixa');
+    if(Number.isFinite(e)) reasons.push(e<=200?'⚡ Energia ≤200 kJ — favorável':e<300?'⚡ Energia 200–300 kJ — aceitável':'⚡ Energia elevada — penaliza');
+    if(Number.isFinite(w)) reasons.push(w<1?'🌊 Ondulação <1 m — favorável':w<=1.5?'🌊 Ondulação moderada':'🌊 Ondulação elevada');
+    if(Number.isFinite(wind)) reasons.push(wind<10?'💨 Rajadas baixas favorecem':wind<=20?'💨 Vento moderado':'💨 Vento forte');
+    const windDir=String(s.wind||''); if(/\bE\b/.test(windDir)) reasons.push('🧭 Vento de leste pode ajudar a limpar o mar');
+    const per=Number.parseFloat(String(s.period)); if(Number.isFinite(per)) reasons.push(per<=10?'⏱️ Período ≤10 s — favorável': '⏱️ Período >10 s — penaliza');
+    if(Number.isFinite(visM)) reasons.push(visM>=3?'👁️ Visibilidade estimada boa':visM>=2?'👁️ Visibilidade estimada razoável':'👁️ Visibilidade estimada baixa — reduz o índice de pesca');
     if(pen>0.2) reasons.push('Mar recente ainda pesa no modelo'); else reasons.push('Tendência recente sem penalização forte');
     return `<div class="todayDecision">
-      <div class="todayDecisionHead"><div><div class="todayDecisionTitle">🤿 Condições para pesca submarina · hoje</div><div class="notice" style="margin-top:4px">Leitura rápida baseada nas condições atuais e na memória das últimas 72 horas.</div></div><div class="todayDecisionScore ${scoreClass(today.score)}">${hasToday?today.score:'—'}<small>/10</small></div></div>
+      <div class="todayDecisionHead"><div><div class="todayDecisionTitle">🤿 Condições para pesca submarina · hoje</div><div class="notice" style="margin-top:4px">Índice específico para pesca submarina: ondulação, período, rajadas, energia, vento/direção, visibilidade e memória das últimas 72 horas.</div></div><div class="todayDecisionScore ${scoreClass(today.score)}">${hasToday?today.score:'—'}<small>/10</small></div></div>
       <div class="todayDecisionGrid">
         <div class="todayMetric"><small>👁️ Visibilidade estimada</small><b>${today.visibility!=null?Number(today.visibility).toFixed(1)+' m':'—'}</b></div>
         <div class="todayMetric"><small>⚡ Energia</small><b>${today.energyKJ!=null?Math.round(today.energyKJ)+' kJ':'—'}</b></div>

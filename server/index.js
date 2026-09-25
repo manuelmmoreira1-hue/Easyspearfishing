@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.3-7dias-memoria-dia';
+const VERSION = '2.14-pesca-thresholds';
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -62,30 +62,63 @@ function energyLabel(e){
 }
 function energyPenalty(e){
   if(!finite(e) || e <= 200) return 0;
-  if(e <= 300) return 0.5;
-  if(e <= 400) return 1.2;
-  if(e <= 500) return 2.0;
-  if(e <= 650) return 3.0;
-  if(e <= 800) return 4.0;
+  if(e <= 300) return 0.7;
+  if(e <= 400) return 1.5;
+  if(e <= 500) return 2.5;
+  if(e <= 650) return 3.4;
+  if(e <= 800) return 4.2;
   return 5.0;
 }
-function modelScore(wave,period,wind,gust){
+function windCleaningBonus(wind, windDirection){
+  if(!finite(wind) || !finite(windDirection)) return 0;
+  const d=Number(windDirection);
+  // For the Porto north-west coast, easterly flow is treated as a
+  // potential cleaning/offshore signal. It is a modest bonus, not a
+  // guarantee of clear water. Strong wind still becomes a negative.
+  const easterly=d>=65 && d<=115;
+  const nearE=d>=30 && d<65 || d>115 && d<=145;
+  if(easterly){
+    if(wind>=6 && wind<=16) return 0.45;
+    if(wind>16 && wind<=22) return 0.20;
+    if(wind<6) return 0.10;
+    return -0.35;
+  }
+  if(nearE && wind<=14) return 0.15;
+  if(d>220 && d<330) return -0.35;
+  if(d>=330 || d<=20) return -0.15;
+  return 0;
+}
+function fishingConditionScore(wave,period,wind,gust,windDirection){
   if(![wave,period,wind,gust].every(finite)) return null;
-  let s=10;
-  if(wave>0.7) s-=Math.min(4,(wave-0.7)*3);
-  if(wave>1.5) s-=1.5;
-  if(wave>2) s-=2;
-  if(period<5) s-=0.5;
-  if(period>12) s-=0.3;
-  if(wind>8) s-=Math.min(2.5,(wind-8)*0.18);
-  if(gust>18) s-=Math.min(1.5,(gust-18)*0.12);
-  if(gust>28) s-=1;
   const e=energy(wave,period);
-  // Energy is deliberately important for spearfishing: around 200 kJ
-  // or below is treated as the favourable band; the penalty increases
-  // progressively above that threshold.
-  s -= energyPenalty(e);
+  let s=10;
+  // Practical spearfishing thresholds: low wave, short/moderate period,
+  // low gusts and <=200 kJ are the favourable zone.
+  if(wave>0.8) s-=Math.min(3.5,(wave-0.8)*3.2);
+  if(wave>1.0) s-=1.0;
+  if(wave>1.4) s-=1.5;
+  if(wave>1.8) s-=1.5;
+  if(period>10) s-=Math.min(1.8,(period-10)*0.45);
+  if(period>13) s-=1.0;
+  if(gust>10) s-=Math.min(2.8,(gust-10)*0.14);
+  if(gust>20) s-=1.2;
+  if(wind>10) s-=Math.min(1.2,(wind-10)*0.08);
+  s-=energyPenalty(e);
+  s+=windCleaningBonus(wind,windDirection);
   return Math.max(0,Math.min(10,Number(s.toFixed(1))));
+}
+function visibilityScoreAdjustment(v){
+  if(!finite(v)) return 0;
+  const n=Number(v);
+  if(n>=4) return 0.3;
+  if(n>=3) return 0.1;
+  if(n>=2) return 0;
+  if(n>=1.5) return -1.0;
+  if(n>=1) return -2.0;
+  return -3.0;
+}
+function modelScore(wave,period,wind,gust,windDirection){
+  return fishingConditionScore(wave,period,wind,gust,windDirection);
 }
 function classify(s){
   if(s==null) return ['⚪','Sem classificação'];
@@ -432,7 +465,7 @@ function buildDisplayHourly(hourly, daily, today){
 function buildSpot(name,marine,weather){
   const mc=marine.current||{}, wc=weather.current||{};
   const wave=num(mc.wave_height), period=num(mc.wave_period), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
-  const baseScore=modelScore(wave,period,wind,gust);
+  const baseScore=modelScore(wave,period,wind,gust,num(wc.wind_direction_10m));
 
   const e=energy(wave,period);
 
@@ -443,7 +476,11 @@ function buildSpot(name,marine,weather){
     const time=mh.time[i];
     const w=num(mh.wave_height?.[i]), p=num(mh.wave_period?.[i]), wi=num(wh.wind_speed_10m?.[i]), g=num(wh.wind_gusts_10m?.[i]);
     const mem=seaMemory(time,mh,wh);
-    const base=modelScore(w,p,wi,g);
+    const windDir=num(wh.wind_direction_10m?.[i]);
+    const base=modelScore(w,p,wi,g,windDir);
+    const underwaterVisibility=estimateHourlyVisibilityAt({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:windDir,current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])},mem);
+    const memoryScore=scoreWithMemory(base,mem);
+    const finalScore=memoryScore==null?null:Number(clamp(memoryScore+visibilityScoreAdjustment(underwaterVisibility),0,10).toFixed(1));
     hourly.push({
       time, wave:w, waveDirection:num(mh.wave_direction?.[i]), period:p,
       peakPeriod:num(mh.wave_peak_period?.[i]), swell:num(mh.swell_wave_height?.[i]),
@@ -451,11 +488,11 @@ function buildSpot(name,marine,weather){
       windWave:num(mh.wind_wave_height?.[i]), windWavePeriod:num(mh.wind_wave_period?.[i]),
       secondarySwell:num(mh.secondary_swell_wave_height?.[i]), secondarySwellPeriod:num(mh.secondary_swell_wave_period?.[i]),
       energyKJ:energy(w,p), energyLabel:energyLabel(energy(w,p)),
-      wind:wi, windDirection:num(wh.wind_direction_10m?.[i]), gust:g,
+      wind:wi, windDirection:windDir, gust:g,
       visibility:num(wh.visibility?.[i]), rainChance:num(wh.precipitation_probability?.[i]),
       cloud:num(wh.cloud_cover?.[i]), baseScore:base, memoryPenalty:mem.penalty, memoryRecovery:mem.recovery,
-      memoryReasons:mem.reasons, score:scoreWithMemory(base,mem),
-      underwaterVisibility:estimateHourlyVisibilityAt({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:num(wh.wind_direction_10m?.[i]),current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])},mem)
+      memoryReasons:mem.reasons, score:finalScore,
+      underwaterVisibility
     });
   }
   const nowLocalDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -480,8 +517,8 @@ function buildSpot(name,marine,weather){
   const dailyForecast=buildDailyForecast(futureHourly, weather.daily);
   const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
   const currentMem=seaMemory(nowLocal,mh,wh).penalty;
-  const adjustedCurrentScore=scoreWithMemory(baseScore,{penalty:currentMem||0});
-  const [emoji,status]=classify(adjustedCurrentScore);
+  const memoryAdjustedScore=scoreWithMemory(baseScore,{penalty:currentMem||0});
+  const [emoji,status]=classify(memoryAdjustedScore);
   const underwaterVisibility=estimateUnderwaterVisibility(name,marine,weather);
   if(underwaterVisibility.available && currentMem!=null){
     underwaterVisibility.estimatedMeters=Number(clamp(underwaterVisibility.estimatedMeters-currentMem*0.45,0.5,7).toFixed(1));
@@ -489,10 +526,12 @@ function buildSpot(name,marine,weather){
     underwaterVisibility.historyPenalty=currentMem;
     underwaterVisibility.reasons=[...(underwaterVisibility.reasons||[]),'efeito acumulado dos últimos dias'].slice(0,4);
   }
+  const adjustedCurrentScore=memoryAdjustedScore==null?null:Number(clamp(memoryAdjustedScore+visibilityScoreAdjustment(underwaterVisibility.available?underwaterVisibility.estimatedMeters:null),0,10).toFixed(1));
+  const finalClass=classify(adjustedCurrentScore);
   const dailyBest=dailyForecast.slice().sort((a,b)=>b.score-a.score)[0]||null;
 
   return {
-    name,lat:SPOTS[name][0],lon:SPOTS[name][1],score:adjustedCurrentScore,baseScore,status,statusEmoji:emoji,
+    name,lat:SPOTS[name][0],lon:SPOTS[name][1],score:adjustedCurrentScore,baseScore,status:finalClass[1],statusEmoji:finalClass[0],
     wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', direction:compass(mc.wave_direction),
     waterTemp:finite(mc.sea_surface_temperature)?`${fmt(mc.sea_surface_temperature)} °C`:'—',
     wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—', gust:gust!=null?`${fmt(gust)} km/h`:'—',
@@ -507,7 +546,7 @@ function buildSpot(name,marine,weather){
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
     hourly:buildDisplayHourly(hourly, weather.daily, nowLocalDate),
-    note:'A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período; o limiar de ~200 kJ é usado como referência operacional para pesca submarina. Não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
+    note:'O índice de pesca submarina usa como referências operacionais período <=10 s, ondulação <1 m, rajadas <10 km/h e energia <=200 kJ como zona favorável; vento de leste pode dar um pequeno bónus de limpeza, mas não é tratado como garantia. A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período e não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }
 
