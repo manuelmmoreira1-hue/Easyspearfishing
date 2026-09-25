@@ -17,8 +17,8 @@ h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:
 .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}.stat small{color:var(--muted);display:block}.stat b{font-size:24px;display:block;margin-top:3px}
 .card{background:rgba(255,255,255,.92);border:1px solid rgba(156,205,218,.55);border-radius:20px;padding:18px;margin-bottom:18px;box-shadow:0 10px 30px rgba(20,65,90,.07);backdrop-filter:blur(4px)}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
-.spot{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff;text-align:left;transition:.15s;min-height:142px}.spot:hover{border-color:#a85be3;transform:translateY(-1px)}.spot.active{border:2px solid var(--purple);padding:13px;box-shadow:0 0 0 3px #7b2cbf16}
-.spotHead{display:flex;justify-content:space-between;gap:8px}.name{font-weight:850;font-size:17px}.modelScore{font-size:22px;font-weight:900;color:var(--green)}.status{font-size:12px;color:#27663e;background:#edf9f0;border-radius:999px;padding:4px 8px;display:inline-block;margin-top:6px}
+.spot{border:1px solid var(--line);border-radius:18px;padding:16px;background:linear-gradient(180deg,#fff 0%,#f9fcfd 100%);text-align:left;transition:.15s;min-height:218px;box-shadow:0 6px 18px rgba(20,65,90,.05)}.spot:hover{border-color:#7bbfd0;transform:translateY(-2px);box-shadow:0 10px 24px rgba(20,65,90,.09)}.spot.active{border:2px solid var(--purple);padding:15px;box-shadow:0 0 0 3px #7b2cbf16}
+.spotHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.name{font-weight:850;font-size:18px}.modelScore{font-size:24px;font-weight:950;color:var(--green)}.scoreGood{color:#159447}.scoreFair{color:#a66a00}.scoreWarn{color:#e27619}.scoreBad{color:#c43d3d}.status{font-size:12px;color:#27663e;background:#edf9f0;border-radius:999px;padding:5px 9px;display:inline-flex;align-items:center;margin-top:8px}.spotMetrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.spotMetric{background:var(--soft);border:1px solid #e7edf4;border-radius:12px;padding:8px 7px;min-width:0}.spotMetric small{display:block;color:var(--muted);font-size:10px;margin-bottom:2px}.spotMetric b{font-size:13px;white-space:nowrap}.spotWindow{margin-top:11px;padding:9px 10px;border-radius:11px;background:#f5f0ff;border:1px solid #eadcff;color:#5b21b6;font-size:12px}.spotBar{height:6px;border-radius:99px;background:#edf1f4;overflow:hidden;margin-top:10px}.spotBar span{display:block;height:100%;border-radius:99px}.barGood{background:#159447}.barFair{background:#c99b24}.barWarn{background:#e27619}.barBad{background:#c43d3d}.spotReal{margin-top:10px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}.energyGood{color:#159447}.energyFair{color:#a66a00}.energyWarn{color:#e27619}.energyBad{color:#c43d3d}
 .row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:var(--soft);border:1px solid #e7edf4;border-radius:999px;padding:5px 8px;font-size:12px}.visibilityPrediction{margin-top:12px;padding:14px;border-radius:15px;background:linear-gradient(135deg,#f7f0ff,#eef9f3);border:1px solid #e7d8ff}.visibilityPrediction .vpBig{font-size:30px;font-weight:900;color:#5b21b6}.visibilityPrediction .vpMeta{color:#4b5563;font-size:13px;margin-top:4px}.community{margin-top:9px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}
 .detailHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.bigScore{font-size:34px;font-weight:950;color:var(--green)}.pill{border-radius:999px;padding:7px 11px;background:#edf9f0;font-weight:800}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}.metric{background:var(--soft);border-radius:13px;padding:11px}.metric small{display:block;color:var(--muted)}.metric b{display:block;margin-top:3px;font-size:16px}
@@ -95,15 +95,29 @@ function filtered(){
   if(filter==='visibility') a.sort((x,y)=>(y.community?.visibilityAvg??-1)-(x.community?.visibilityAvg??-1));
   return a;
 }
+function scoreClass(v){const n=Number(v);return n>=8?'scoreGood':n>=6?'scoreFair':n>=4?'scoreWarn':'scoreBad'}
+function barClass(v){const n=Number(v);return n>=8?'barGood':n>=6?'barFair':n>=4?'barWarn':'barBad'}
+function energyValue(v){const m=String(v??'').match(/[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0]):null}
+function energyClass(v){const n=Number(v);return !Number.isFinite(n)?'':n<200?'energyGood':n<300?'energyFair':n<500?'energyWarn':'energyBad'}
 function renderSpots(){
   const el=$('#spots'); el.innerHTML='';
   filtered().forEach(s=>{
     const b=document.createElement('button'); b.className='spot'+(selected?.name===s.name?' active':'');
-    const c=s.community||{};
-    b.innerHTML=`<div class="spotHead"><div class="name">📍 ${esc(s.name)}</div><div class="modelScore">${s.score??'—'}<small style="font-size:12px">/10</small></div></div>
+    const c=s.community||{}; const sc=Number(s.score); const scoreCls=scoreClass(sc); const e=energyValue(s.energy);
+    const energyText=e!=null?Math.round(e)+' kJ':'—';
+    const energyLabel=e==null?'':e<200?'Excelente':e<300?'Boa':e<500?'Pesada':'Muito pesada';
+    const daily=s.dailyBest?`${s.dailyBest.score}/10 em ${new Date(s.dailyBest.date+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}`:'—';
+    b.innerHTML=`<div class="spotHead"><div class="name">📍 ${esc(s.name)}</div><div class="modelScore ${scoreCls}">${s.score??'—'}<small style="font-size:12px">/10</small></div></div>
       <div class="status">${s.statusEmoji||''} ${esc(s.status||'')}</div>
-      <div class="row" style="margin-top:9px"><span class="chip">🌊 ${esc(s.wave)}</span><span class="chip">💨 ${esc(s.wind)}</span><span class="chip">🌡️ ${esc(s.waterTemp)}</span></div>
-      <div class="community">👁️ Previsão subaquática: <b>${s.underwaterVisibilityPrediction?.estimatedMeters!=null?s.underwaterVisibilityPrediction.estimatedMeters.toFixed(1)+' m':'—'}</b> · 7 dias: <b>${s.dailyBest?`${s.dailyBest.score}/10 em ${new Date(s.dailyBest.date+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}`:'—'}</b> · real: <b>${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'}</b> · ${c.count||0} observação(ões)${c.latest?.createdAt?' · '+fmtDate(c.latest.createdAt):''}</div>`;
+      <div class="spotMetrics">
+        <div class="spotMetric"><small>👁️ Visibilidade</small><b>${s.underwaterVisibilityPrediction?.estimatedMeters!=null?s.underwaterVisibilityPrediction.estimatedMeters.toFixed(1)+' m':'—'}</b></div>
+        <div class="spotMetric"><small>⚡ Energia</small><b class="${energyClass(e)}">${energyText}</b></div>
+        <div class="spotMetric"><small>🌊 Onda</small><b>${esc(s.wave)}</b></div>
+        <div class="spotMetric"><small>💨 Vento</small><b>${esc(s.wind)}</b></div>
+      </div>
+      <div class="spotWindow">⭐ <b>Melhor janela:</b> ${esc(s.bestWindow||'—')}</div>
+      <div class="spotBar"><span class="${barClass(sc)}" style="width:${Math.max(0,Math.min(100,(Number.isFinite(sc)?sc:0)*10))}%"></span></div>
+      <div class="spotReal">👁️ <b>Real:</b> ${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'} · ${c.count||0} observação(ões) · 📅 <b>7 dias:</b> ${esc(daily)}</div>`;
     b.onclick=()=>selectSpot(s.name); el.appendChild(b);
   });
 }
