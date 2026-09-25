@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.2-7dias-memoria';
+const VERSION = '2.3-7dias-memoria-dia';
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -92,7 +92,7 @@ async function getAllSpots(force=false){
   const lons=names.map(n=>SPOTS[n][1]).join(',');
 
   const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=2&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
-  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=2&forecast_days=8&timezone=Europe%2FLisbon`;
+  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=2&forecast_days=8&timezone=Europe%2FLisbon`;
 
   const [mr,wr]=await Promise.all([fetchJson(marineUrl),fetchJson(weatherUrl)]);
   const ma=Array.isArray(mr)?mr:[mr], wa=Array.isArray(wr)?wr:[wr];
@@ -354,6 +354,45 @@ function buildDailyForecast(hourly){
   return out;
 }
 function estimateHourlyVisibility(x){ return estimateHourlyVisibilityAt(x,null); }
+function buildDisplayHourly(hourly, daily, today){
+  // Presentation only: keep the full hourly series for calculations, but show
+  // daylight hours at roughly 3-hour intervals so the table stays useful on mobile.
+  const sunriseByDay={};
+  const sunsetByDay={};
+  if(daily?.time){
+    for(let i=0;i<daily.time.length;i++){
+      const d=daily.time[i];
+      sunriseByDay[d]=daily.sunrise?.[i]||null;
+      sunsetByDay[d]=daily.sunset?.[i]||null;
+    }
+  }
+  const out=[];
+  const byDay={};
+  for(const x of hourly){
+    const d=x.time?.slice(0,10);
+    if(!d || d<today) continue;
+    if(!byDay[d]) byDay[d]=[];
+    byDay[d].push(x);
+  }
+  for(const d of Object.keys(byDay).sort().slice(0,7)){
+    const rise=sunriseByDay[d]?.slice(11,16)||'07:00';
+    const set=sunsetByDay[d]?.slice(11,16)||'21:00';
+    const day=byDay[d].filter(x=>{
+      const t=x.time.slice(11,16);
+      return t>=rise && t<=set;
+    });
+    if(!day.length) continue;
+    const first=day[0];
+    const startHour=Number(first.time.slice(11,13));
+    const selected=[];
+    for(const x of day){
+      const h=Number(x.time.slice(11,13));
+      if((h-startHour)%3===0) selected.push(x);
+    }
+    out.push(...selected);
+  }
+  return out.slice(0,7*6);
+}
 function buildSpot(name,marine,weather){
   const mc=marine.current||{}, wc=weather.current||{};
   const wave=num(mc.wave_height), period=num(mc.wave_period), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
@@ -413,7 +452,7 @@ function buildSpot(name,marine,weather){
     bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Não calculado', bestWindowTime:best?.time||null,
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
-    hourly:hourly.filter(x=>x.time.slice(0,10)>=today).slice(0,168),
+    hourly:buildDisplayHourly(hourly, weather.daily, today),
     note:'A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }

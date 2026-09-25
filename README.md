@@ -38,3 +38,12 @@ Não usar os valores do modelo como medição direta de visibilidade subaquátic
 ## V2.1 — Previsão de visibilidade subaquática
 
 A versão 2.1 acrescenta uma estimativa de visibilidade subaquática derivada das condições disponíveis: onda, período, swell, vento e direção, rajadas, tendência recente da ondulação, chuva recente, corrente, maré e exposição relativa do spot. As observações reais recentes da comunidade podem calibrar a estimativa. A app apresenta também intervalo provável e confiança e mantém a distinção entre estimativa e observação real.
+
+
+## V2.3 — apresentação da previsão
+- A previsão horária mantém o cálculo completo no servidor, mas a interface mostra apenas horas de luz, aproximadamente de 3 em 3 horas.
+- O servidor usa sunrise/sunset da previsão local para excluir horas noturnas.
+- A memória de 72h continua a ser calculada com a série horária completa.
+- A área de observações da comunidade foi movida para cima, antes da tabela horária.
+- Foi adicionado um botão “Registar visibilidade” no topo do detalhe do spot para saltar diretamente para o formulário.
+- Foi dado um tratamento visual ligeiramente mais marítimo; o redesign completo do layout pode ser feito numa etapa seguinte sem alterar a lógica.
