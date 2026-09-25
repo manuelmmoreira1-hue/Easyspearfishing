@@ -230,7 +230,7 @@ app.post('/api/observations',(req,res)=>{
 app.get('/api/data-info',(req,res)=>res.json({observationsFile:'data/observations.json',count:readObs().length}));
 
 app.use(express.static(PUBLIC_DIR,{etag:false,lastModified:false,setHeaders:(res)=>res.setHeader('Cache-Control','no-store')}));
-app.get('*',(req,res)=>{
+app.use((req,res)=>{
   if(req.path.startsWith('/api/')) return res.status(404).json({error:'Endpoint não encontrado'});
   res.sendFile(path.join(PUBLIC_DIR,'index.html'));
 });
