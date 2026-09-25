@@ -16,3 +16,9 @@ Teste interno do motor:
 - Condições moderadas: 7,3/10
 - Caso semelhante ao observado (1,3 m / 10,9 s / rajadas 33,1 / visibilidade 1,6 m): 2,8/10
 - Caso semelhante com visibilidade 1,0 m e rajadas 31,3: 1,5/10
+
+## V2.16 — score hora a hora
+- O score principal passa a seguir a hora local atual da previsão horária.
+- A melhor janela de hoje considera apenas horas de luz que ainda não passaram.
+- O painel de condições mostra os valores da hora atual, em vez da média diária.
+- O frontend atualiza automaticamente a cada 5 minutos para acompanhar a passagem das horas.

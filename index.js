@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.15-motor-exigente';
+const VERSION = '2.16-hora-a-hora';
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -535,8 +535,14 @@ function buildSpot(name,marine,weather){
       underwaterVisibility
     });
   }
-  const nowLocalDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const futureHourly=hourly.filter(x=>x.time.slice(0,10)>=nowLocalDate);
+  const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
+  const nowLocalHour=nowLocal.slice(0,13)+':00';
+  const nowLocalDate=nowLocal.slice(0,10);
+  // From this point on, 'future' means the current hour or a later hour.
+  // This prevents a window that already happened from remaining the 'best' one.
+  const futureHourly=hourly.filter(x=>x.time>=nowLocalHour);
+  const currentHour=hourly.find(x=>x.time.slice(0,13)===nowLocalHour.slice(0,13)) ||
+    hourly.filter(x=>x.time<=nowLocalHour).slice(-1)[0] || hourly[0] || null;
   const sunriseByDay={}, sunsetByDay={};
   if(weather.daily?.time){
     for(let i=0;i<weather.daily.time.length;i++){
@@ -545,20 +551,21 @@ function buildSpot(name,marine,weather){
       sunsetByDay[d]=weather.daily.sunset?.[i]||null;
     }
   }
-  const next24=futureHourly.slice(0,24).filter(x=>{
-    if(x.score==null) return false;
+  // Best window = only remaining daylight hours of TODAY.
+  const remainingToday=futureHourly.filter(x=>{
+    if(x.score==null || x.time.slice(0,10)!==nowLocalDate) return false;
     const d=x.time.slice(0,10), t=x.time.slice(11,16);
     const rise=sunriseByDay[d]?.slice(11,16)||'07:00';
     const set=sunsetByDay[d]?.slice(11,16)||'21:00';
     return t>=rise && t<=set;
   });
-  const rawBest=next24.reduce((a,b)=>!a||b.score>a.score?b:a,null);
+  const rawBest=remainingToday.reduce((a,b)=>!a||b.score>a.score?b:a,null);
   const best=rawBest && rawBest.score >= 4 ? rawBest : null;
   const dailyForecast=buildDailyForecast(futureHourly, weather.daily);
-  const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
   const currentMem=seaMemory(nowLocal,mh,wh).penalty;
-  const memoryAdjustedScore=scoreWithMemory(baseScore,{penalty:currentMem||0});
-  const [emoji,status]=classify(memoryAdjustedScore);
+  // The main score must follow the current forecast hour, not the daily average.
+  const liveScore=currentHour?.score ?? scoreWithMemory(baseScore,{penalty:currentMem||0});
+  const [emoji,status]=classify(liveScore);
   const underwaterVisibility=estimateUnderwaterVisibility(name,marine,weather);
   if(underwaterVisibility.available && currentMem!=null){
     underwaterVisibility.estimatedMeters=Number(clamp(underwaterVisibility.estimatedMeters-currentMem*0.45,0.5,7).toFixed(1));
@@ -566,12 +573,13 @@ function buildSpot(name,marine,weather){
     underwaterVisibility.historyPenalty=currentMem;
     underwaterVisibility.reasons=[...(underwaterVisibility.reasons||[]),'efeito acumulado dos últimos dias'].slice(0,4);
   }
-  const adjustedCurrentScore=modelScore(wave,period,wind,gust,num(wc.wind_direction_10m),underwaterVisibility.available?underwaterVisibility.estimatedMeters:null,currentMem||0);
+  const adjustedCurrentScore=liveScore;
   const finalClass=classify(adjustedCurrentScore);
   const dailyBest=dailyForecast.slice().sort((a,b)=>b.score-a.score)[0]||null;
 
   return {
     name,lat:SPOTS[name][0],lon:SPOTS[name][1],score:adjustedCurrentScore,baseScore,status:finalClass[1],statusEmoji:finalClass[0],
+    currentHour: currentHour ? {time:currentHour.time,score:currentHour.score,baseScore:currentHour.baseScore,underwaterVisibility:currentHour.underwaterVisibility,energyKJ:currentHour.energyKJ,wave:currentHour.wave,period:currentHour.period,wind:currentHour.wind,windDirection:currentHour.windDirection,gust:currentHour.gust,swell:currentHour.swell,swellPeriod:currentHour.swellPeriod,memoryPenalty:currentHour.memoryPenalty} : null,
     wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', direction:compass(mc.wave_direction),
     waterTemp:finite(mc.sea_surface_temperature)?`${fmt(mc.sea_surface_temperature)} °C`:'—',
     wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—', gust:gust!=null?`${fmt(gust)} km/h`:'—',

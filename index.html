@@ -139,12 +139,12 @@ function renderDetail(){
     <div style="text-align:right"><div class="bigScore ${scoreClass(s.score)}">${s.score??'—'}/10</div><span class="pill">${s.statusEmoji||''} ${esc(s.status||'')}</span></div>
   </div>
   ${(()=>{
-    const today=(s.dailyForecast||[])[0]||{};
+    const today=s.currentHour||{};
     const hasToday=Number.isFinite(Number(today.score));
-    const hasWindow=Number(today.bestScore)>=4 && today.bestTime;
+    const hasWindow=s.bestWindow && s.bestWindow!=='Sem janela favorável';
     const best7=(s.dailyForecast||[]).filter(d=>Number(d.score)>=4).sort((a,b)=>Number(b.score)-Number(a.score))[0];
     const reasons=[];
-    const e=Number(s.energy); const w=Number.parseFloat(String(s.wave)); const wind=Number.parseFloat(String(s.wind)); const visM=s.underwaterVisibilityPrediction?.estimatedMeters; const pen=Number(s.historyModel?.currentPenalty||0);
+    const e=Number(today.energyKJ); const w=Number(today.wave); const wind=Number(today.wind); const visM=Number(today.underwaterVisibility); const pen=Number(today.memoryPenalty??s.historyModel?.currentPenalty??0);
     if(Number.isFinite(e)) reasons.push(e<=200?'⚡ Energia ≤200 kJ — favorável':e<300?'⚡ Energia 200–300 kJ — aceitável':'⚡ Energia elevada — penaliza');
     if(Number.isFinite(w)) reasons.push(w<1?'🌊 Ondulação <1 m — favorável':w<=1.5?'🌊 Ondulação moderada':'🌊 Ondulação elevada');
     if(Number.isFinite(wind)) reasons.push(wind<10?'💨 Rajadas baixas favorecem':wind<=20?'💨 Vento moderado':'💨 Vento forte');
@@ -153,14 +153,14 @@ function renderDetail(){
     if(Number.isFinite(visM)) reasons.push(visM>=3?'👁️ Visibilidade estimada boa':visM>=2?'👁️ Visibilidade estimada razoável':'👁️ Visibilidade estimada baixa — reduz o índice de pesca');
     if(pen>0.2) reasons.push('Mar recente ainda pesa no modelo'); else reasons.push('Tendência recente sem penalização forte');
     return `<div class="todayDecision">
-      <div class="todayDecisionHead"><div><div class="todayDecisionTitle">🤿 Condições para pesca submarina · hoje</div><div class="notice" style="margin-top:4px">Índice específico para pesca submarina: ondulação, período, rajadas, energia, vento/direção, visibilidade e memória das últimas 72 horas.</div></div><div class="todayDecisionScore ${scoreClass(today.score)}">${hasToday?today.score:'—'}<small>/10</small></div></div>
+      <div class="todayDecisionHead"><div><div class="todayDecisionTitle">🤿 Condições para pesca submarina · agora</div><div class="notice" style="margin-top:4px">Score calculado para a hora atual (${today.time?esc(today.time.slice(11,16)):'—'}), usando a previsão horária e a memória das últimas 72 horas.</div></div><div class="todayDecisionScore ${scoreClass(today.score)}">${hasToday?today.score:'—'}<small>/10</small></div></div>
       <div class="todayDecisionGrid">
-        <div class="todayMetric"><small>👁️ Visibilidade estimada</small><b>${today.visibility!=null?Number(today.visibility).toFixed(1)+' m':'—'}</b></div>
+        <div class="todayMetric"><small>👁️ Visibilidade estimada</small><b>${today.underwaterVisibility!=null?Number(today.underwaterVisibility).toFixed(1)+' m':'—'}</b></div>
         <div class="todayMetric"><small>⚡ Energia</small><b>${today.energyKJ!=null?Math.round(today.energyKJ)+' kJ':'—'}</b></div>
-        <div class="todayMetric"><small>🌊 Ondulação</small><b>${today.waveAvg!=null?Number(today.waveAvg).toFixed(1)+' m':'—'}</b></div>
-        <div class="todayMetric"><small>💨 Vento</small><b>${today.windAvg!=null?Number(today.windAvg).toFixed(1)+' km/h':'—'}</b></div>
+        <div class="todayMetric"><small>🌊 Ondulação</small><b>${today.wave!=null?Number(today.wave).toFixed(1)+' m':'—'}</b></div>
+        <div class="todayMetric"><small>💨 Vento</small><b>${today.wind!=null?Number(today.wind).toFixed(1)+' km/h':'—'}</b></div>
       </div>
-      <div class="todayWindow ${hasWindow?'':'noWindow'}">${hasWindow?'⭐ Melhor janela de hoje: '+esc(today.bestTime.slice(11,16))+' · '+today.bestScore+'/10':'🌙 Sem janela favorável durante as horas de luz'}</div>
+      <div class="todayWindow ${hasWindow?'':'noWindow'}">${hasWindow?'⭐ Melhor janela restante hoje: '+esc(s.bestWindow):'🌙 Sem janela favorável durante as horas de luz restantes'}</div>
       <div class="todayReasons">${reasons.map(x=>`<span class="reason">${esc(x)}</span>`).join('')}</div>
     </div>`;
   })()}
