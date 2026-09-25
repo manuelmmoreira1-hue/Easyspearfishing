@@ -25,7 +25,7 @@ h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:
 .detailHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.bigScore{font-size:34px;font-weight:950;color:var(--green)}.pill{border-radius:999px;padding:7px 11px;background:#edf9f0;font-weight:800}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}.metric{background:var(--soft);border-radius:13px;padding:11px}.metric small{display:block;color:var(--muted)}.metric b{display:block;margin-top:3px;font-size:16px}
 .sectionTitle{margin:22px 0 10px;font-size:18px}.best{background:#eef9f0;border:1px solid #d7efdc;border-radius:14px;padding:13px;font-weight:800}
-.hourly{overflow:auto}.hourly table{border-collapse:separate;border-spacing:0;min-width:1100px;width:100%;font-size:12px}.hourly th,.hourly td{padding:8px 9px;border-bottom:1px solid #e9eef4;white-space:nowrap;text-align:right}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f5f7fa}.hourly tr.bestRow{background:#eff9f0;font-weight:800}
+.hourly{overflow:auto}.hourly table{border-collapse:separate;border-spacing:0;min-width:1100px;width:100%;font-size:12px}.hourly th,.hourly td{padding:8px 9px;border-bottom:1px solid #e9eef4;white-space:nowrap;text-align:right}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f5f7fa}.hourly tr.bestRow{background:#eff9f0;font-weight:800}.dailyForecast{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.dayCard{border:1px solid var(--line);border-radius:14px;padding:11px;background:var(--soft)}.dayCard .day{font-weight:850}.dayCard .dayScore{font-size:24px;font-weight:950;color:var(--green);margin-top:3px}.dayCard small{color:var(--muted)}.dayCard .dayMeta{font-size:12px;margin-top:5px;line-height:1.45}.memoryTag{display:inline-block;margin-top:7px;padding:3px 7px;border-radius:999px;background:#fff;border:1px solid #e7edf4;font-size:11px}@media(max-width:1100px){.dailyForecast{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.dailyForecast{grid-template-columns:repeat(2,1fr)}}
 .communityGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.communityBox{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff}
 .ratingGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rating{background:var(--soft);padding:10px;border-radius:12px}.rating b{font-size:22px}
 .obsList{display:grid;gap:8px;margin-top:10px}.obs{background:var(--soft);border-radius:13px;padding:11px}.obsTop{display:flex;justify-content:space-between;gap:10px}.stars{letter-spacing:1px}
@@ -105,7 +105,7 @@ function renderSpots(){
     b.innerHTML=`<div class="spotHead"><div class="name">📍 ${esc(s.name)}</div><div class="modelScore">${s.score??'—'}<small style="font-size:12px">/10</small></div></div>
       <div class="status">${s.statusEmoji||''} ${esc(s.status||'')}</div>
       <div class="row" style="margin-top:9px"><span class="chip">🌊 ${esc(s.wave)}</span><span class="chip">💨 ${esc(s.wind)}</span><span class="chip">🌡️ ${esc(s.waterTemp)}</span></div>
-      <div class="community">👁️ Previsão subaquática: <b>${s.underwaterVisibilityPrediction?.estimatedMeters!=null?s.underwaterVisibilityPrediction.estimatedMeters.toFixed(1)+' m':'—'}</b> · real: <b>${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'}</b> · ${c.count||0} observação(ões)${c.latest?.createdAt?' · '+fmtDate(c.latest.createdAt):''}</div>`;
+      <div class="community">👁️ Previsão subaquática: <b>${s.underwaterVisibilityPrediction?.estimatedMeters!=null?s.underwaterVisibilityPrediction.estimatedMeters.toFixed(1)+' m':'—'}</b> · 7 dias: <b>${s.dailyBest?`${s.dailyBest.score}/10 em ${new Date(s.dailyBest.date+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}`:'—'}</b> · real: <b>${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'}</b> · ${c.count||0} observação(ões)${c.latest?.createdAt?' · '+fmtDate(c.latest.createdAt):''}</div>`;
     b.onclick=()=>selectSpot(s.name); el.appendChild(b);
   });
 }
@@ -136,10 +136,13 @@ function renderDetail(){
     ${s.underwaterVisibilityPrediction?.reasons?.length?'<div class="vpMeta">Sinais principais: '+s.underwaterVisibilityPrediction.reasons.map(esc).join(' · ')+'</div>':''}
   </div>
   <div class="sectionTitle">🕒 Melhor janela calculada</div>
-  <div class="best">${esc(s.bestWindow||'Não calculado')} <span class="notice">· score técnico das próximas horas</span></div>
-  <div class="sectionTitle">📈 Previsão horária</div>
+  <div class="best">${esc(s.bestWindow||'Não calculado')} <span class="notice">· score técnico ajustado pelas condições das 72h anteriores</span></div>
+  <div class="sectionTitle">📅 Previsão dos próximos 7 dias</div>
+  <div class="notice" style="margin-bottom:9px">O score diário considera as melhores horas de luz de cada dia. O modelo aplica um efeito residual das condições marinhas das 72 horas anteriores, que diminui à medida que o mar recupera.</div>
+  <div class="dailyForecast">${(s.dailyForecast||[]).map((d,i)=>`<div class="dayCard"><div class="day">${i===0?'Hoje':new Date(d.date+'T12:00:00').toLocaleDateString('pt-PT',{weekday:'short',day:'2-digit',month:'2-digit'})}</div><div class="dayScore">${d.score}/10</div><div class="dayMeta">👁️ ${d.visibility!=null?d.visibility.toFixed(1)+' m':'—'}<br>🌊 ${d.waveAvg!=null?d.waveAvg.toFixed(1)+' m':'—'} · 💨 ${d.windAvg!=null?d.windAvg.toFixed(1)+' km/h':'—'}<br>⭐ Melhor: ${d.bestTime?.slice(11,16)||'—'} (${d.bestScore}/10)</div><span class="memoryTag">${esc(d.memoryTrend)}</span></div>`).join('')}</div>
+  <div class="sectionTitle">📈 Previsão horária — próximas 7 dias</div>
   <div class="hourly"><table><thead><tr><th>Hora</th><th>Score</th><th>Vis. sub.</th><th>Onda</th><th>Período</th><th>Direção</th><th>Swell</th><th>Vento</th><th>Rajadas</th><th>Vis. atm.</th><th>Chuva</th><th>Nuvens</th></tr></thead><tbody>
-  ${h.map(x=>`<tr class="${s.bestWindowTime===x.time?'bestRow':''}"><td>${esc(x.time?.slice(11,16))}</td><td>${x.score??'—'}</td><td>${x.underwaterVisibility!=null?x.underwaterVisibility.toFixed(1)+' m':'—'}</td><td>${x.wave!=null?x.wave.toFixed(1)+' m':'—'}</td><td>${x.period!=null?x.period.toFixed(1)+' s':'—'}</td><td>${x.waveDirection!=null?esc(compass(x.waveDirection)):'—'}</td><td>${x.swell!=null?x.swell.toFixed(1)+' m':'—'} ${x.swellDirection!=null?esc(compass(x.swellDirection)):''}</td><td>${x.wind!=null?x.wind.toFixed(1)+' km/h':'—'}</td><td>${x.gust!=null?x.gust.toFixed(1)+' km/h':'—'}</td><td>${x.visibility!=null?(x.visibility/1000).toFixed(1)+' km':'—'}</td><td>${x.rainChance!=null?x.rainChance+'%':'—'}</td><td>${x.cloud!=null?x.cloud+'%':'—'}</td></tr>`).join('')}
+  ${h.map(x=>`<tr class="${s.bestWindowTime===x.time?'bestRow':''}"><td>${esc(x.time?.slice(11,16))}</td><td>${x.score??'—'}${x.memoryPenalty>0.2?` <span title="Ajuste das condições anteriores">↘</span>`:''}</td><td>${x.underwaterVisibility!=null?x.underwaterVisibility.toFixed(1)+' m':'—'}</td><td>${x.wave!=null?x.wave.toFixed(1)+' m':'—'}</td><td>${x.period!=null?x.period.toFixed(1)+' s':'—'}</td><td>${x.waveDirection!=null?esc(compass(x.waveDirection)):'—'}</td><td>${x.swell!=null?x.swell.toFixed(1)+' m':'—'} ${x.swellDirection!=null?esc(compass(x.swellDirection)):''}</td><td>${x.wind!=null?x.wind.toFixed(1)+' km/h':'—'}</td><td>${x.gust!=null?x.gust.toFixed(1)+' km/h':'—'}</td><td>${x.visibility!=null?(x.visibility/1000).toFixed(1)+' km':'—'}</td><td>${x.rainChance!=null?x.rainChance+'%':'—'}</td><td>${x.cloud!=null?x.cloud+'%':'—'}</td></tr>`).join('')}
   </tbody></table></div>
 
   <div class="sectionTitle">👁️ Visibilidade real — observações dos pescadores</div>
@@ -169,7 +172,7 @@ function renderDetail(){
       <div id="formMsg" class="notice" style="margin-top:8px"></div>
     </div>
   </div>
-  <p class="notice">⚠️ ${esc(s.note)}</p>`;
+  <p class="notice">⚠️ ${esc(s.note)}</p><p class="notice">🧠 Memória de condições: ${s.historyModel?.hours||72}h anteriores · ajuste atual ${s.historyModel?.currentPenalty!=null?s.historyModel.currentPenalty.toFixed(2):'—'}.</p>`;
   $('#obsForm').addEventListener('submit',submitObs);
 }
 function compass(v){if(!Number.isFinite(Number(v)))return '—';return ['N','NE','E','SE','S','SW','W','NW'][Math.round(Number(v)/45)%8]}

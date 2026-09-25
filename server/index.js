@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.1-visibilidade';
+const VERSION = '2.2-7dias-memoria';
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -91,8 +91,8 @@ async function getAllSpots(force=false){
   const lats=names.map(n=>SPOTS[n][0]).join(',');
   const lons=names.map(n=>SPOTS[n][1]).join(',');
 
-  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=2&forecast_days=3&timezone=Europe%2FLisbon&cell_selection=sea`;
-  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=2&forecast_days=3&timezone=Europe%2FLisbon`;
+  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=2&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
+  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=2&forecast_days=8&timezone=Europe%2FLisbon`;
 
   const [mr,wr]=await Promise.all([fetchJson(marineUrl),fetchJson(weatherUrl)]);
   const ma=Array.isArray(mr)?mr:[mr], wa=Array.isArray(wr)?wr:[wr];
@@ -256,10 +256,67 @@ function estimateUnderwaterVisibility(name,marine,weather){
 }
 
 
-function estimateHourlyVisibility(x){
+function historicalContext(mh,wh,targetTime){
+  const mt=mh.time||[], wt=wh.time||[];
+  const target=Date.parse(targetTime);
+  if(!Number.isFinite(target)) return {avg24:null,avg72:null,max24:null,max72:null,highWaveFrac72:null,rain24:null,rain72:null,currentWave:null,trend12:null};
+  const vals=(arr,times,hours,mapper)=>{
+    const out=[]; const start=target-hours*3600e3;
+    for(let i=0;i<arr.length;i++){
+      const t=Date.parse(times[i]); if(!Number.isFinite(t)||t>=target||t<start) continue;
+      const v=mapper(arr[i],i); if(Number.isFinite(v)) out.push(v);
+    }
+    return out;
+  };
+  const wave24=vals(mh.wave_height,mt,24,v=>Number(v));
+  const wave72=vals(mh.wave_height,mt,72,v=>Number(v));
+  const rain24=vals(wh.precipitation,wt,24,v=>Number(v));
+  const rain72=vals(wh.precipitation,wt,72,v=>Number(v));
+  const wind12=vals(wh.wind_speed_10m,wt,12,v=>Number(v));
+  const prev12=vals(mh.wave_height,mt,12,v=>Number(v));
+  const high=wave72.length?wave72.filter(v=>v>=1.5).length/wave72.length:null;
+  const recentWave=wave24.length?wave24.reduce((a,b)=>a+b,0)/wave24.length:null;
+  const earlier=vals(mh.wave_height,mt,72,v=>Number(v)).filter((_,i)=>false);
+  let trend12=null;
+  if(prev12.length>=4){
+    const mid=Math.floor(prev12.length/2), a=prev12.slice(0,mid), b=prev12.slice(mid);
+    const avgA=a.reduce((x,y)=>x+y,0)/a.length, avgB=b.reduce((x,y)=>x+y,0)/b.length;
+    trend12=avgB-avgA;
+  }
+  return {
+    avg24:wave24.length?wave24.reduce((a,b)=>a+b,0)/wave24.length:null,
+    avg72:wave72.length?wave72.reduce((a,b)=>a+b,0)/wave72.length:null,
+    max24:wave24.length?Math.max(...wave24):null,
+    max72:wave72.length?Math.max(...wave72):null,
+    highWaveFrac72:high,
+    rain24:rain24.length?rain24.reduce((a,b)=>a+b,0):null,
+    rain72:rain72.length?rain72.reduce((a,b)=>a+b,0):null,
+    wind12:wind12.length?wind12.reduce((a,b)=>a+b,0)/wind12.length:null,
+    currentWave:recentWave,
+    trend12
+  };
+}
+function seaMemory(targetTime,mh,wh){
+  const h=historicalContext(mh,wh,targetTime);
+  let penalty=0; let recovery=0; const reasons=[];
+  if(finite(h.avg72)) penalty+=clamp((h.avg72-0.65)*0.95,0,1.15);
+  if(finite(h.max24)) penalty+=clamp((h.max24-1.4)*0.30,0,0.75);
+  if(finite(h.highWaveFrac72)) penalty+=h.highWaveFrac72*0.55;
+  if(finite(h.rain72)&&h.rain72>8) penalty+=Math.min(0.45,(h.rain72-8)*0.035);
+  if(finite(h.avg24)&&finite(h.avg72)&&h.avg24<h.avg72-0.15){ recovery+=0.30; reasons.push('mar a recuperar'); }
+  if(finite(h.trend12)&&h.trend12<-0.15){ recovery+=0.22; reasons.push('onda a baixar'); }
+  if(penalty>0.75) reasons.push('efeito residual da agitação');
+  const net=clamp(penalty-recovery,-0.25,1.8);
+  return {penalty:Number(net.toFixed(2)),recovery:Number(recovery.toFixed(2)),reasons,history:h};
+}
+function scoreWithMemory(base,mem){
+  if(base==null) return null;
+  const adjusted=Number(clamp(base-(mem.penalty*0.85),0,10).toFixed(1));
+  return adjusted;
+}
+function estimateHourlyVisibilityAt(x, memory){
   if(![x.wave,x.period,x.wind].every(finite)) return null;
   let v=3.2;
-  const exposure=0.9;
   v += x.wave<=0.6?0.65:x.wave<=1?0.35:x.wave<=1.3?0:x.wave<=1.7?-0.55:x.wave<=2.1?-1.15:-1.9;
   v += x.period<5?-0.8:x.period<7?-0.35:x.period<=11?0.35:x.period<=13?0.15:-0.1;
   if(finite(x.swell)) v += x.swell<=0.5?0.25:x.swell<=0.9?0:x.swell<=1.3?-0.35:x.swell<=1.8?-0.8:-1.25;
@@ -267,57 +324,97 @@ function estimateHourlyVisibility(x){
   v += df*(x.wind<=8?0.65:x.wind<=14?0.35:x.wind<=20?0.05:-0.35);
   if(finite(x.gust)&&x.gust>18) v-=Math.min(0.8,(x.gust-18)*0.08);
   if(finite(x.current)&&x.current>0.5) v-=Math.min(0.6,(x.current-0.5)*0.9);
-  if(finite(x.tide)&&Math.abs(x.tide)>1.2) v-=0.15*exposure;
+  if(finite(x.tide)&&Math.abs(x.tide)>1.2) v-=0.15;
   if(finite(x.rainChance)&&x.rainChance>70) v-=0.1;
+  if(memory?.penalty!=null) v-=Math.min(1.35,memory.penalty*0.75);
   return Number(clamp(v,0.5,7).toFixed(1));
 }
+function buildDailyForecast(hourly){
+  const days={};
+  hourly.filter(x=>x.time).forEach(x=>{
+    const d=x.time.slice(0,10); if(!days[d]) days[d]=[]; days[d].push(x);
+  });
+  const keys=Object.keys(days).sort();
+  const out=[];
+  for(const d of keys.slice(0,7)){
+    const day=days[d].filter(x=>x.score!=null);
+    if(!day.length) continue;
+    const daylight=day.filter(x=>{const h=Number(x.time.slice(11,13));return h>=8&&h<=20;});
+    const pool=daylight.length?daylight:day;
+    const top=[...pool].sort((a,b)=>(b.score??-1)-(a.score??-1)).slice(0,6);
+    const avg=(arr,key)=>{const v=arr.map(x=>Number(x[key])).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
+    const best=top[0]||pool[0];
+    const avgScore=top.length?top.reduce((a,x)=>a+x.score,0)/top.length:best.score;
+    const avgVis=avg(top,'underwaterVisibility');
+    const waves=avg(pool,'wave'), winds=avg(pool,'wind');
+    const memoryAvg=avg(pool,'memoryPenalty');
+    const trend=memoryAvg!=null?(memoryAvg<=0.35?'a recuperar':memoryAvg>=1.0?'mar ainda mexido':'estável'):'—';
+    out.push({date:d,score:Number(avgScore.toFixed(1)),visibility:avgVis!=null?Number(avgVis.toFixed(1)):null,bestTime:best.time,bestScore:best.score,waveAvg:waves!=null?Number(waves.toFixed(1)):null,windAvg:winds!=null?Number(winds.toFixed(1)):null,memoryPenalty:memoryAvg!=null?Number(memoryAvg.toFixed(2)):null,memoryTrend:trend});
+  }
+  return out;
+}
+function estimateHourlyVisibility(x){ return estimateHourlyVisibilityAt(x,null); }
 function buildSpot(name,marine,weather){
   const mc=marine.current||{}, wc=weather.current||{};
   const wave=num(mc.wave_height), period=num(mc.wave_period), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
-  const score=modelScore(wave,period,wind,gust);
-  const [emoji,status]=classify(score);
+  const baseScore=modelScore(wave,period,wind,gust);
+
   const e=energy(wave,period);
-  const underwaterVisibility=estimateUnderwaterVisibility(name,marine,weather);
 
   const mh=marine.hourly||{}, wh=weather.hourly||{};
   const n=Math.min((mh.time||[]).length,(wh.time||[]).length);
   const hourly=[];
   for(let i=0;i<n;i++){
+    const time=mh.time[i];
     const w=num(mh.wave_height?.[i]), p=num(mh.wave_period?.[i]), wi=num(wh.wind_speed_10m?.[i]), g=num(wh.wind_gusts_10m?.[i]);
+    const mem=seaMemory(time,mh,wh);
+    const base=modelScore(w,p,wi,g);
     hourly.push({
-      time:mh.time[i], wave:w, waveDirection:num(mh.wave_direction?.[i]), period:p,
+      time, wave:w, waveDirection:num(mh.wave_direction?.[i]), period:p,
       peakPeriod:num(mh.wave_peak_period?.[i]), swell:num(mh.swell_wave_height?.[i]),
       swellDirection:num(mh.swell_wave_direction?.[i]), swellPeriod:num(mh.swell_wave_period?.[i]),
       wind:wi, windDirection:num(wh.wind_direction_10m?.[i]), gust:g,
       visibility:num(wh.visibility?.[i]), rainChance:num(wh.precipitation_probability?.[i]),
-      cloud:num(wh.cloud_cover?.[i]), score:modelScore(w,p,wi,g), underwaterVisibility: estimateHourlyVisibility({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:num(wh.wind_direction_10m?.[i]),current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])})
+      cloud:num(wh.cloud_cover?.[i]), baseScore:base, memoryPenalty:mem.penalty, memoryRecovery:mem.recovery,
+      memoryReasons:mem.reasons, score:scoreWithMemory(base,mem),
+      underwaterVisibility:estimateHourlyVisibilityAt({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:num(wh.wind_direction_10m?.[i]),current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])},mem)
     });
   }
-  const next24=hourly.slice(0,24).filter(x=>x.score!=null);
+  const today=new Date().toISOString().slice(0,10);
+  const futureHourly=hourly.filter(x=>x.time.slice(0,10)>=today);
+  const next24=futureHourly.slice(0,24).filter(x=>x.score!=null);
   const best=next24.reduce((a,b)=>!a||b.score>a.score?b:a,null);
+  const dailyForecast=buildDailyForecast(futureHourly);
+  const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
+  const currentMem=seaMemory(nowLocal,mh,wh).penalty;
+  const adjustedCurrentScore=scoreWithMemory(baseScore,{penalty:currentMem||0});
+  const [emoji,status]=classify(adjustedCurrentScore);
+  const underwaterVisibility=estimateUnderwaterVisibility(name,marine,weather);
+  if(underwaterVisibility.available && currentMem!=null){
+    underwaterVisibility.estimatedMeters=Number(clamp(underwaterVisibility.estimatedMeters-currentMem*0.45,0.5,7).toFixed(1));
+    underwaterVisibility.range=[Number(clamp(underwaterVisibility.range[0]-currentMem*0.3,0.3,6.5).toFixed(1)),Number(clamp(underwaterVisibility.range[1]-currentMem*0.15,1.0,8.0).toFixed(1))];
+    underwaterVisibility.historyPenalty=currentMem;
+    underwaterVisibility.reasons=[...(underwaterVisibility.reasons||[]),'efeito acumulado dos últimos dias'].slice(0,4);
+  }
+  const dailyBest=dailyForecast.slice().sort((a,b)=>b.score-a.score)[0]||null;
 
   return {
-    name,lat:SPOTS[name][0],lon:SPOTS[name][1],score,status,statusEmoji:emoji,
-    wave:wave!=null?`${fmt(wave)} m`:'—',
-    period:period!=null?`${fmt(period)} s`:'—',
-    direction:compass(mc.wave_direction),
+    name,lat:SPOTS[name][0],lon:SPOTS[name][1],score:adjustedCurrentScore,baseScore,status,statusEmoji:emoji,
+    wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', direction:compass(mc.wave_direction),
     waterTemp:finite(mc.sea_surface_temperature)?`${fmt(mc.sea_surface_temperature)} °C`:'—',
-    wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—',
-    gust:gust!=null?`${fmt(gust)} km/h`:'—',
-    energy:e!=null?`~${fmt(e)} (indicador relativo)`:'—',
-    atmosphericVisibility:finite(wc.visibility)?`${(Number(wc.visibility)/1000).toFixed(1)} km`:'—',
+    wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—', gust:gust!=null?`${fmt(gust)} km/h`:'—',
+    energy:e!=null?`~${fmt(e)} (indicador relativo)`:'—', atmosphericVisibility:finite(wc.visibility)?`${(Number(wc.visibility)/1000).toFixed(1)} km`:'—',
     underwaterVisibility: underwaterVisibility.available ? `${underwaterVisibility.estimatedMeters.toFixed(1)} m (estimativa)` : 'Indisponível',
     underwaterVisibilityPrediction: underwaterVisibility,
-    swell:finite(mc.swell_wave_height)?`${fmt(mc.swell_wave_height)} m`:'—',
-    swellDirection:compass(mc.swell_wave_direction),
+    swell:finite(mc.swell_wave_height)?`${fmt(mc.swell_wave_height)} m`:'—', swellDirection:compass(mc.swell_wave_direction),
     swellPeriod:finite(mc.swell_wave_period)?`${fmt(mc.swell_wave_period)} s`:'—',
     tideLevel:finite(mc.sea_level_height_msl)?`${Number(mc.sea_level_height_msl).toFixed(2)} m MSL*`:'—',
-    currentSpeed:finite(mc.ocean_current_velocity)?`${fmt(mc.ocean_current_velocity)} km/h`:'—',
-    currentDirection:compass(mc.ocean_current_direction),
-    bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Não calculado',
-    bestWindowTime:best?.time||null,
-    hourly:hourly.slice(0,48),
-    note:'A visibilidade subaquática é uma estimativa derivada das condições de mar e tempo; não é uma medição direta. Usa onda, período, swell, vento/direção, rajadas, tendência recente, chuva, corrente, maré e proteção relativa do spot. Observações reais recentes podem calibrar a estimativa.'
+    currentSpeed:finite(mc.ocean_current_velocity)?`${fmt(mc.ocean_current_velocity)} km/h`:'—', currentDirection:compass(mc.ocean_current_direction),
+    bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Não calculado', bestWindowTime:best?.time||null,
+    dailyForecast, dailyBest, forecastDays:dailyForecast.length,
+    historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
+    hourly:hourly.filter(x=>x.time.slice(0,10)>=today).slice(0,168),
+    note:'A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }
 
