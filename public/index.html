@@ -8,7 +8,7 @@
 :root{--purple:#7b2cbf;--orange:#ff7a00;--sea:#0b7895;--sea2:#0f9db7;--ink:#14202b;--muted:#66758a;--bg:#eef7fa;--card:#fff;--line:#d9e7ec;--soft:#f5fafb;--green:#159447;--yellow:#b77900;--red:#c43d3d}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at 20% -10%,#c9f5ff 0,#eaf8fb 24%,#f5f8fb 55%,#eef4f7 100%);color:var(--ink)}
 button,input,select,textarea{font:inherit}button{cursor:pointer}
-.hero{position:relative;background:linear-gradient(180deg,#043b55,#075e78);color:#fff;box-shadow:0 10px 34px rgba(4,83,110,.22);overflow:hidden}.hero:before{content:'';position:absolute;inset:auto 0 0;height:42px;background:linear-gradient(180deg,transparent,rgba(0,18,30,.42));pointer-events:none}.wrap{max-width:1380px;margin:auto;padding:18px}.heroTop{position:relative;z-index:1;display:flex;justify-content:space-between;gap:18px;align-items:center;min-height:150px}.brandLogo{display:block;width:min(930px,78vw);height:132px;object-fit:cover;object-position:center;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.2)}.hero .updated{background:rgba(0,28,45,.6);padding:9px 12px;border-radius:12px;backdrop-filter:blur(5px);white-space:nowrap}.brandSpacer{display:none}
+.hero{position:relative;background:linear-gradient(180deg,#043b55,#075e78);color:#fff;box-shadow:0 10px 34px rgba(4,83,110,.22);overflow:hidden}.hero:before{content:'';position:absolute;inset:auto 0 0;height:42px;background:linear-gradient(180deg,transparent,rgba(0,18,30,.42));pointer-events:none}.wrap{max-width:1380px;margin:auto;padding:18px}.heroTop{position:relative;z-index:1;display:flex;justify-content:space-between;gap:24px;align-items:center;min-height:112px}.brandBlock{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}.brandLogo{display:block;width:min(650px,68vw);height:92px;object-fit:cover;object-position:center;border-radius:15px;box-shadow:0 7px 20px rgba(0,0,0,.18)}.brandTagline{margin:0 0 0 4px;font-size:14px;font-weight:600;letter-spacing:.1px;color:rgba(255,255,255,.9)}.hero .updated{background:rgba(0,28,45,.6);padding:9px 12px;border-radius:12px;backdrop-filter:blur(5px);white-space:nowrap}.brandSpacer{display:none}
 h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:12px;opacity:.85;text-align:right}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
 .toolbar h2{margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -32,12 +32,12 @@ h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:
 .filters{display:flex;gap:8px;flex-wrap:wrap}.filter{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px}.filter.active{background:var(--purple);color:#fff;border-color:var(--purple)}
 footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
 @media(max-width:950px){.dashboard{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.communityGrid{grid-template-columns:1fr}}
-@media(max-width:600px){.wrap{padding:11px}.heroTop{align-items:flex-start}.grid{grid-template-columns:1fr}.dashboard{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}.bigScore{font-size:28px}h1{font-size:26px}}
+@media(max-width:600px){.wrap{padding:11px}.heroTop{align-items:flex-start;min-height:88px}.brandLogo{width:min(100%,430px);height:70px}.brandTagline{font-size:11px}.grid{grid-template-columns:1fr}.dashboard{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}.bigScore{font-size:28px}h1{font-size:26px}}
 </style>
 </head>
 <body>
 <header class="hero"><div class="wrap heroTop">
-<img class="brandLogo" src="/easyspearfishing_logo.png?rev=3" alt="Easyspearfishing — pesca submarina"><div class="updated" id="updated">A carregar…</div>
+<div class="brandBlock"><img class="brandLogo" src="/easyspearfishing_logo.png?rev=4" alt="Easyspearfishing — pesca submarina"><p class="brandTagline">Condições · previsão · visibilidade real de pesca submarina</p></div><div class="updated" id="updated">A carregar…</div>
 </div></header>
 
 <main class="wrap">
