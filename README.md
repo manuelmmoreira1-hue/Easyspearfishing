@@ -47,3 +47,7 @@ A versão 2.1 acrescenta uma estimativa de visibilidade subaquática derivada da
 - A área de observações da comunidade foi movida para cima, antes da tabela horária.
 - Foi adicionado um botão “Registar visibilidade” no topo do detalhe do spot para saltar diretamente para o formulário.
 - Foi dado um tratamento visual ligeiramente mais marítimo; o redesign completo do layout pode ser feito numa etapa seguinte sem alterar a lógica.
+
+
+## V2.5 — Energia da ondulação
+A energia é apresentada em kJ como estimativa calibrada a partir de altura² × período. Cerca de 200 kJ ou menos é tratado como faixa favorável para pesca submarina; acima disso o score penaliza progressivamente. Não é uma medição direta do Windguru.

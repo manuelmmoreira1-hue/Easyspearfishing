@@ -45,8 +45,29 @@ function compass(v){
 }
 function energy(wave,period){
   if(!finite(wave)||!finite(period)) return null;
-  // Relative UI indicator; not a physical measurement.
-  return 0.49*Number(wave)*Number(wave)*Number(period);
+  // Calibrated surf-energy estimate in kJ for comparison with the
+  // familiar kJ scale used by surf forecast services. It is derived
+  // from wave height squared × period and scaled over a 30-second
+  // reference interval. It is NOT a direct Windguru measurement.
+  return 30 * 0.49 * Number(wave) * Number(wave) * Number(period);
+}
+function energyLabel(e){
+  if(!finite(e)) return '—';
+  if(e < 200) return 'Excelente';
+  if(e < 300) return 'Boa';
+  if(e < 400) return 'A subir';
+  if(e < 500) return 'Pesada';
+  if(e < 700) return 'Muito pesada';
+  return 'Muito pesada / crítica';
+}
+function energyPenalty(e){
+  if(!finite(e) || e <= 200) return 0;
+  if(e <= 300) return 0.5;
+  if(e <= 400) return 1.2;
+  if(e <= 500) return 2.0;
+  if(e <= 650) return 3.0;
+  if(e <= 800) return 4.0;
+  return 5.0;
 }
 function modelScore(wave,period,wind,gust){
   if(![wave,period,wind,gust].every(finite)) return null;
@@ -60,8 +81,10 @@ function modelScore(wave,period,wind,gust){
   if(gust>18) s-=Math.min(1.5,(gust-18)*0.12);
   if(gust>28) s-=1;
   const e=energy(wave,period);
-  if(finite(e)&&e>15) s-=Math.min(2,(e-15)*0.10);
-  if(finite(e)&&e>25) s-=1.5;
+  // Energy is deliberately important for spearfishing: around 200 kJ
+  // or below is treated as the favourable band; the penalty increases
+  // progressively above that threshold.
+  s -= energyPenalty(e);
   return Math.max(0,Math.min(10,Number(s.toFixed(1))));
 }
 function classify(s){
@@ -91,8 +114,8 @@ async function getAllSpots(force=false){
   const lats=names.map(n=>SPOTS[n][0]).join(',');
   const lons=names.map(n=>SPOTS[n][1]).join(',');
 
-  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=2&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
-  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=2&forecast_days=8&timezone=Europe%2FLisbon`;
+  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=3&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
+  const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=3&forecast_days=8&timezone=Europe%2FLisbon`;
 
   const [mr,wr]=await Promise.all([fetchJson(marineUrl),fetchJson(weatherUrl)]);
   const ma=Array.isArray(mr)?mr:[mr], wa=Array.isArray(wr)?wr:[wr];
@@ -348,8 +371,9 @@ function buildDailyForecast(hourly){
     const avgVis=avg(top,'underwaterVisibility');
     const waves=avg(pool,'wave'), winds=avg(pool,'wind');
     const memoryAvg=avg(pool,'memoryPenalty');
+    const energyAvg=avg(pool,'energyKJ');
     const trend=memoryAvg!=null?(memoryAvg<=0.35?'a recuperar':memoryAvg>=1.0?'mar ainda mexido':'estável'):'—';
-    out.push({date:d,score:Number(avgScore.toFixed(1)),visibility:avgVis!=null?Number(avgVis.toFixed(1)):null,bestTime:best.time,bestScore:best.score,waveAvg:waves!=null?Number(waves.toFixed(1)):null,windAvg:winds!=null?Number(winds.toFixed(1)):null,memoryPenalty:memoryAvg!=null?Number(memoryAvg.toFixed(2)):null,memoryTrend:trend});
+    out.push({date:d,score:Number(avgScore.toFixed(1)),visibility:avgVis!=null?Number(avgVis.toFixed(1)):null,bestTime:best.time,bestScore:best.score,waveAvg:waves!=null?Number(waves.toFixed(1)):null,windAvg:winds!=null?Number(winds.toFixed(1)):null,energyKJ:energyAvg!=null?Math.round(energyAvg):null,energyLabel:energyLabel(energyAvg),memoryPenalty:memoryAvg!=null?Number(memoryAvg.toFixed(2)):null,memoryTrend:trend});
   }
   return out;
 }
@@ -412,6 +436,9 @@ function buildSpot(name,marine,weather){
       time, wave:w, waveDirection:num(mh.wave_direction?.[i]), period:p,
       peakPeriod:num(mh.wave_peak_period?.[i]), swell:num(mh.swell_wave_height?.[i]),
       swellDirection:num(mh.swell_wave_direction?.[i]), swellPeriod:num(mh.swell_wave_period?.[i]),
+      windWave:num(mh.wind_wave_height?.[i]), windWavePeriod:num(mh.wind_wave_period?.[i]),
+      secondarySwell:num(mh.secondary_swell_wave_height?.[i]), secondarySwellPeriod:num(mh.secondary_swell_wave_period?.[i]),
+      energyKJ:energy(w,p), energyLabel:energyLabel(energy(w,p)),
       wind:wi, windDirection:num(wh.wind_direction_10m?.[i]), gust:g,
       visibility:num(wh.visibility?.[i]), rainChance:num(wh.precipitation_probability?.[i]),
       cloud:num(wh.cloud_cover?.[i]), baseScore:base, memoryPenalty:mem.penalty, memoryRecovery:mem.recovery,
@@ -442,7 +469,7 @@ function buildSpot(name,marine,weather){
     wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', direction:compass(mc.wave_direction),
     waterTemp:finite(mc.sea_surface_temperature)?`${fmt(mc.sea_surface_temperature)} °C`:'—',
     wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—', gust:gust!=null?`${fmt(gust)} km/h`:'—',
-    energy:e!=null?`~${fmt(e)} (indicador relativo)`:'—', atmosphericVisibility:finite(wc.visibility)?`${(Number(wc.visibility)/1000).toFixed(1)} km`:'—',
+    energy:e!=null?`${Math.round(e)} kJ · ${energyLabel(e)}`:'—', atmosphericVisibility:finite(wc.visibility)?`${(Number(wc.visibility)/1000).toFixed(1)} km`:'—',
     underwaterVisibility: underwaterVisibility.available ? `${underwaterVisibility.estimatedMeters.toFixed(1)} m (estimativa)` : 'Indisponível',
     underwaterVisibilityPrediction: underwaterVisibility,
     swell:finite(mc.swell_wave_height)?`${fmt(mc.swell_wave_height)} m`:'—', swellDirection:compass(mc.swell_wave_direction),
@@ -453,7 +480,7 @@ function buildSpot(name,marine,weather){
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
     hourly:buildDisplayHourly(hourly, weather.daily, today),
-    note:'A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
+    note:'A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período; o limiar de ~200 kJ é usado como referência operacional para pesca submarina. Não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }
 
