@@ -1,72 +1,183 @@
 <!doctype html>
 <html lang="pt">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Easyspearfishing</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fa;color:#15202b}
-header{background:linear-gradient(135deg,#7b2cbf,#ff7a00);color:#fff;padding:22px 18px}.wrap{max-width:1200px;margin:auto;padding:16px}h1{margin:0;font-size:30px}header p{margin:5px 0 0;opacity:.92}
-.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 5px 20px #0000000d}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.spot{border:1px solid #dce3ea;border-radius:14px;padding:13px;background:#fff;text-align:left;cursor:pointer}.spot:hover{border-color:#7b2cbf}.name{font-weight:800}.score{font-size:20px;font-weight:900;margin:4px 0}.mini{font-size:12px;color:#64748b}
-.status{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.metric{background:#f6f8fa;border-radius:12px;padding:10px}.metric small{color:#64748b}.metric b{font-size:16px}.warn{font-size:12px;color:#64748b;margin-top:12px}
-.hourly{overflow-x:auto;margin-top:16px}.hourly table{border-collapse:separate;border-spacing:0;min-width:900px;width:100%;font-size:13px}.hourly th,.hourly td{padding:8px 10px;border-bottom:1px solid #e6ebf0;text-align:right;white-space:nowrap}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f6f8fa}.best{background:#eef7ee;font-weight:800}.source{font-size:12px;color:#64748b;margin-top:12px}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fa;color:#15202b}
+header{background:linear-gradient(135deg,#7b2cbf,#ff7a00);color:#fff;padding:22px 18px}
+.wrap{max-width:1200px;margin:auto;padding:16px}
+h1{margin:0;font-size:30px} header p{margin:5px 0 0;opacity:.92}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 5px 20px #0000000d}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.spot{border:1px solid #dce3ea;border-radius:14px;padding:13px;background:#fff;text-align:left;cursor:pointer;width:100%;font:inherit}
+.spot:hover{border-color:#7b2cbf}.spot.active{border-color:#7b2cbf;box-shadow:0 0 0 2px #7b2cbf22}
+.name{font-weight:800}.score{font-size:20px;font-weight:900;margin:4px 0}.mini{font-size:12px;color:#64748b}
+.status{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee;margin-left:6px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.metric{background:#f6f8fa;border-radius:12px;padding:10px}.metric small{color:#64748b}.metric b{font-size:16px}
+.warn{font-size:12px;color:#64748b;margin-top:12px}
+.hourly{overflow-x:auto;margin-top:16px}.hourly table{border-collapse:separate;border-spacing:0;min-width:980px;width:100%;font-size:13px}
+.hourly th,.hourly td{padding:8px 10px;border-bottom:1px solid #e6ebf0;text-align:right;white-space:nowrap}
+.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f6f8fa}
+.best{background:#eef7ee;font-weight:800}.source{font-size:12px;color:#64748b;margin-top:12px}
+.loading{opacity:.65}.error{color:#b42318}.ok{color:#18794e}
+.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+button.refresh{border:1px solid #dce3ea;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
 @media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}h1{font-size:25px}.wrap{padding:10px}}
+@media(max-width:480px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-<header><div class="wrap"><h1>🎯 Easyspearfishing</h1><p>Condições para pesca submarina — Foz do Douro → Póvoa</p></div></header>
-<main class="wrap"><section class="card"><h2>📍 Escolhe o spot</h2><div id="spots" class="grid"></div></section><section class="card" id="details"><h2>Seleciona um spot</h2><p class="mini">A app carrega automaticamente as condições por coordenadas.</p></section></main>
+<header><div class="wrap">
+<h1>🎯 Easyspearfishing</h1>
+<p>Condições para pesca submarina — Foz do Douro → Póvoa</p>
+</div></header>
+
+<main class="wrap">
+<section class="card">
+<div class="toolbar">
+<h2 style="margin:0">📍 Escolhe o spot</h2>
+<button class="refresh" onclick="loadAll()">↻ Atualizar</button>
+</div>
+<div id="spots" class="grid"></div>
+</section>
+
+<section class="card" id="details">
+<h2>Seleciona um spot</h2>
+<p class="mini">A app carrega automaticamente as condições por coordenadas.</p>
+</section>
+</main>
+
 <script>
 const spots=[
 ['Foz do Douro',41.148,-8.675],['Castelo do Queijo',41.169,-8.689],['Matosinhos',41.182,-8.705],['Leça da Palmeira',41.190,-8.704],
 ['Marreco',41.235,-8.724],['Perafita',41.225,-8.716],['Angeiras',41.265,-8.722],['Labruge',41.280,-8.716],
 ['Mindelo',41.316,-8.724],['Azurara',41.337,-8.741],['Vila do Conde',41.353,-8.744],['Póvoa de Varzim',41.381,-8.765]
 ];
-const el=document.querySelector('#spots'), details=document.querySelector('#details');
-const refs=new Map();
+
+const el=document.querySelector('#spots');
+const details=document.querySelector('#details');
+const buttons=new Map();
+
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function fmtDir(d){if(!Number.isFinite(Number(d)))return '—';const a=['N','NE','E','SE','S','SW','W','NW'];return a[Math.round(Number(d)/45)%8]}
-function card(s){
- const b=document.createElement('button'); b.className='spot';
- b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score">⏳</div><div class="mini">A carregar...</div>`;
- b.onclick=()=>{const d=refs.get(s[0])?.data;if(d)render(s,d)};
- el.appendChild(b); refs.set(s[0],{spot:s,button:b,data:null});
+function fmtDir(d){
+  if(!Number.isFinite(Number(d)))return '—';
+  const a=['N','NE','E','SE','S','SW','W','NW'];
+  return a[Math.round(Number(d)/45)%8]
 }
-spots.forEach(card);
-
-function renderCards(data){
- for(const d of data){
-   const ref=refs.get(d.name); if(!ref) continue;
-   ref.data=d;
-   ref.button.querySelector('.score').textContent=(d.statusEmoji||'🟡')+' '+(d.score==null?'—':d.score+'/10');
-   ref.button.querySelector('.mini').textContent=`${d.wave} • ${d.wind}`;
- }
+function scoreClass(s){
+  if(s==null)return '';
+  if(s>=8.5)return 'ok';
+  if(s>=7)return '';
+  return 'error';
 }
 
-function render(s,d){
- const rows=(d.hourly||[]).map(h=>`<tr><td>${h.time.slice(0,10)} ${h.time.slice(11,16)}</td><td>${Number.isFinite(h.wave)?h.wave.toFixed(1):'—'} m</td><td>${fmtDir(h.waveDirection)}</td><td>${Number.isFinite(h.period)?h.period.toFixed(1):'—'} s</td><td>${Number.isFinite(h.swell)?h.swell.toFixed(1):'—'} m</td><td>${Number.isFinite(h.swellPeriod)?h.swellPeriod.toFixed(1):'—'} s</td><td>${Number.isFinite(h.wind)?h.wind.toFixed(1):'—'} km/h</td><td>${fmtDir(h.windDirection)}</td><td>${Number.isFinite(h.gust)?h.gust.toFixed(1):'—'} km/h</td><td>${Number.isFinite(h.energy)?h.energy.toFixed(1):'—'}</td><td>${Number.isFinite(h.visibility)?(h.visibility/1000).toFixed(1):'—'} km</td><td>${Number.isFinite(h.tideLevel)?h.tideLevel.toFixed(2):'—'}</td></tr>`).join('');
- details.innerHTML=`<h2>📍 ${esc(s[0])} <span class="status">${d.statusEmoji} ${esc(d.status)}</span></h2><div class="metrics">
- <div class="metric"><small>🌊 Onda</small><br><b>${esc(d.wave)}</b></div><div class="metric"><small>⏱️ Período</small><br><b>${esc(d.period)}</b></div><div class="metric"><small>🧭 Direção</small><br><b>${esc(d.direction)}</b></div><div class="metric"><small>🌡️ Água</small><br><b>${esc(d.waterTemp)}</b></div>
- <div class="metric"><small>💨 Vento</small><br><b>${esc(d.wind)}</b></div><div class="metric"><small>💨 Rajadas</small><br><b>${esc(d.gust)}</b></div><div class="metric"><small>⚡ Energia</small><br><b>${esc(d.energy)}</b></div><div class="metric"><small>👁️ Visibilidade</small><br><b>${esc(d.visibility)}</b></div>
- <div class="metric"><small>🌊 Swell</small><br><b>${esc(d.swell)} ${esc(d.swellDirection)}</b></div><div class="metric"><small>⏱️ Swell período</small><br><b>${esc(d.swellPeriod)}</b></div><div class="metric"><small>🌙 Nível do mar</small><br><b>${esc(d.tideLevel)}</b></div><div class="metric"><small>↗️ Corrente</small><br><b>${esc(d.currentSpeed)} ${esc(d.currentDirection)}</b></div>
- </div><p><b>🕒 Melhor janela calculada:</b> ${esc(d.bestWindow)}</p><div class="hourly"><table><thead><tr><th>Hora</th><th>Onda</th><th>Dir.</th><th>Per.</th><th>Swell</th><th>Swell Per.</th><th>Vento</th><th>Dir.</th><th>Rajadas</th><th>Energia est.</th><th>Visibilidade*</th><th>Maré*</th></tr></thead><tbody>${rows}</tbody></table></div><p class="source">Fonte principal: Open-Meteo Marine + Weather. A visibilidade é atmosférica e a maré é modelada; não substituem observação local.</p><p class="warn">${esc(d.note)}</p>`;
+function buildButtons(){
+  el.innerHTML='';
+  spots.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='spot loading';
+    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score">⏳</div><div class="mini">A carregar...</div>`;
+    b.onclick=()=>loadSpot(s,b,true);
+    el.appendChild(b);
+    buttons.set(s[0],b);
+  });
 }
 
-async function loadAll(force=false){
- details.innerHTML='<h2>📡 A carregar condições...</h2><p class="mini">A app faz agora apenas uma consulta agrupada para os 12 spots.</p>';
- for(const ref of refs.values()){ref.button.querySelector('.score').textContent='⏳';ref.button.querySelector('.mini').textContent='A carregar...';}
- try{
-   const r=await fetch(`/api/spots${force?'?refresh=1':''}`,{cache:'no-store'});
-   const payload=await r.json().catch(()=>({}));
-   if(!r.ok) throw new Error(payload.error||`Servidor respondeu ${r.status}`);
-   renderCards(payload.spots||[]);
-   const first=(payload.spots||[])[0];
-   if(first) render(refs.get(first.name).spot,first);
- }catch(e){
-   for(const ref of refs.values()){ref.button.querySelector('.score').textContent='⚠️';ref.button.querySelector('.mini').textContent='Dados indisponíveis';}
-   details.innerHTML=`<h2>⚠️ Não foi possível carregar</h2><p>${esc(e.message)}</p><p class="warn">Verifica se o serviço Node/Render está ativo e se a rota <code>/api/spots</code> está disponível. Não são feitas 12 chamadas independentes.</p>`;
- }
+async function loadAll(){
+  buildButtons();
+  details.innerHTML='<h2>Seleciona um spot</h2><p class="mini">A carregar condições atuais...</p>';
+  try{
+    const r=await fetch('/api/spots?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('API indisponível');
+    const data=await r.json();
+    (data.spots||[]).forEach(d=>{
+      const b=buttons.get(d.name);
+      if(!b)return;
+      b.classList.remove('loading');
+      b.innerHTML=`<div class="name">📍 ${esc(d.name)}</div><div class="score ${scoreClass(d.score)}">${esc(d.statusEmoji||'🟡')} ${d.score==null?'—':d.score+'/10'}</div><div class="mini">${esc(d.wave||'—')} • ${esc(d.wind||'—')}</div>`;
+      b.onclick=()=>render([d.name,d.lat,d.lon],d,b);
+    });
+  }catch(e){
+    spots.forEach(s=>{
+      const b=buttons.get(s[0]); if(!b)return;
+      b.classList.remove('loading');
+      b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score error">⚠️</div><div class="mini">Erro: ${esc(e.message)}</div>`;
+      b.onclick=()=>loadSpot(s,b,true);
+    });
+  }
 }
 
+async function loadSpot(s,b,show){
+  try{
+    const r=await fetch(`/api/spot?lat=${s[1]}&lon=${s[2]}&name=${encodeURIComponent(s[0])}&ts=${Date.now()}`,{cache:'no-store'});
+    if(!r.ok)throw new Error('API indisponível');
+    const d=await r.json();
+    b.classList.remove('loading');
+    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score ${scoreClass(d.score)}">${esc(d.statusEmoji||'🟡')} ${d.score==null?'—':d.score+'/10'}</div><div class="mini">${esc(d.wave||'—')} • ${esc(d.wind||'—')}</div>`;
+    b.onclick=()=>render(s,d,b);
+    if(show)render(s,d,b);
+  }catch(e){
+    b.classList.remove('loading');
+    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score error">⚠️</div><div class="mini">Erro a carregar</div>`;
+    if(show)details.innerHTML=`<h2>📍 ${esc(s[0])}</h2><p class="error">Não foi possível carregar os dados: ${esc(e.message)}</p>`;
+  }
+}
+
+function render(s,d,b){
+  document.querySelectorAll('.spot').forEach(x=>x.classList.remove('active'));
+  b?.classList.add('active');
+
+  const rows=(d.hourly||[]).map(h=>{
+    const isBest=d.bestWindowTime && h.time===d.bestWindowTime;
+    return `<tr class="${isBest?'best':''}">
+      <td>${esc(h.time?.slice(0,10))} ${esc(h.time?.slice(11,16))}</td>
+      <td>${Number.isFinite(h.wave)?h.wave.toFixed(1):'—'} m</td>
+      <td>${fmtDir(h.waveDirection)}</td>
+      <td>${Number.isFinite(h.period)?h.period.toFixed(1):'—'} s</td>
+      <td>${Number.isFinite(h.swell)?h.swell.toFixed(1):'—'} m</td>
+      <td>${Number.isFinite(h.swellPeriod)?h.swellPeriod.toFixed(1):'—'} s</td>
+      <td>${Number.isFinite(h.wind)?h.wind.toFixed(1):'—'} km/h</td>
+      <td>${fmtDir(h.windDirection)}</td>
+      <td>${Number.isFinite(h.gust)?h.gust.toFixed(1):'—'} km/h</td>
+      <td>${Number.isFinite(h.energy)?h.energy.toFixed(1):'—'}</td>
+      <td>${Number.isFinite(h.visibility)?(h.visibility/1000).toFixed(1):'—'} km</td>
+      <td>${Number.isFinite(h.tideLevel)?h.tideLevel.toFixed(2):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  details.innerHTML=`
+    <h2>📍 ${esc(s[0])} <span class="status">${esc(d.statusEmoji||'🟡')} ${esc(d.status||'Sem classificação')}</span></h2>
+    <div class="metrics">
+      <div class="metric"><small>🌊 Onda</small><br><b>${esc(d.wave)}</b></div>
+      <div class="metric"><small>⏱️ Período</small><br><b>${esc(d.period)}</b></div>
+      <div class="metric"><small>🧭 Direção</small><br><b>${esc(d.direction)}</b></div>
+      <div class="metric"><small>🌡️ Água</small><br><b>${esc(d.waterTemp)}</b></div>
+      <div class="metric"><small>💨 Vento</small><br><b>${esc(d.wind)}</b></div>
+      <div class="metric"><small>💨 Rajadas</small><br><b>${esc(d.gust)}</b></div>
+      <div class="metric"><small>⚡ Energia</small><br><b>${esc(d.energy)}</b></div>
+      <div class="metric"><small>👁️ Visibilidade atmosférica</small><br><b>${esc(d.atmosphericVisibility||d.visibility)}</b></div>
+      <div class="metric"><small>🌊 Swell</small><br><b>${esc(d.swell)} ${esc(d.swellDirection||'')}</b></div>
+      <div class="metric"><small>⏱️ Swell período</small><br><b>${esc(d.swellPeriod)}</b></div>
+      <div class="metric"><small>🌙 Nível do mar</small><br><b>${esc(d.tideLevel)}</b></div>
+      <div class="metric"><small>↗️ Corrente</small><br><b>${esc(d.currentSpeed)} ${esc(d.currentDirection)}</b></div>
+    </div>
+    <p><b>🕒 Melhor janela calculada:</b> ${esc(d.bestWindow||'Não calculado')}</p>
+    <div class="hourly">
+      <table>
+        <thead><tr><th>Hora</th><th>Onda</th><th>Dir.</th><th>Per.</th><th>Swell</th><th>Swell Per.</th><th>Vento</th><th>Dir.</th><th>Rajadas</th><th>Energia est.</th><th>Visibilidade*</th><th>Maré*</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <p class="source">Fonte principal: Open-Meteo Marine + Weather. IPMA e Windguru podem ser usados como referências externas. *A visibilidade apresentada é atmosférica e a maré é nível do mar modelado; nenhuma delas representa uma medição local. A visibilidade subaquática real deve ser confirmada no local.</p>
+    <p class="warn">${esc(d.note||'')}</p>`;
+}
+
+buildButtons();
 loadAll();
-</script></body></html>
+</script>
+</body>
+</html>
