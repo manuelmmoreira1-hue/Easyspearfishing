@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.15-motor-exigente';
+const VERSION = '2.14-pesca-thresholds';
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -88,75 +88,37 @@ function windCleaningBonus(wind, windDirection){
   if(d>=330 || d<=20) return -0.15;
   return 0;
 }
-function componentScore(value, points){
-  if(!finite(value)) return null;
-  for(const [limit,score] of points){ if(value<=limit) return score; }
-  return points[points.length-1][1];
-}
-function fishingConditionScore(wave,period,wind,gust,windDirection,visibility,memoryPenalty=0){
+function fishingConditionScore(wave,period,wind,gust,windDirection){
   if(![wave,period,wind,gust].every(finite)) return null;
   const e=energy(wave,period);
-
-  // Hierarchical model: the factors that actually control comfort and
-  // near-shore sediment resuspension dominate. A low score in one dominant
-  // factor cannot be fully compensated by several minor positives.
-  const waveS=componentScore(wave,[[0.70,10],[0.85,9.2],[1.00,8.0],[1.20,6.5],[1.40,4.8],[1.60,3.2],[1.80,1.8],[99,0.5]]);
-  const energyS=componentScore(e,[[200,10],[250,8.2],[300,6.5],[400,4.2],[500,2.6],[700,1.2],[99,0.3]]);
-  const gustS=componentScore(gust,[[10,10],[15,8.0],[20,5.8],[25,3.8],[30,2.0],[99,0.5]]);
-  const periodS=period<5?5.0:componentScore(period,[[10,10],[11,8.2],[12,6.2],[13,4.2],[99,2.0]]);
-  const windS=componentScore(wind,[[8,10],[10,8.5],[14,6.5],[18,4.5],[22,2.8],[99,1.0]]);
-  const visS=finite(visibility)?componentScore(visibility,[[1.0,0.5],[1.5,2.0],[2.0,4.0],[3.0,6.5],[4.0,8.5],[99,10]]):6.0;
-
-  // Weighted geometric mean gives dominant variables substantially more
-  // influence than a simple additive score.
-  const weights={energy:0.28,wave:0.24,gust:0.18,visibility:0.16,period:0.08,wind:0.06};
-  const parts=[
-    [energyS,weights.energy],[waveS,weights.wave],[gustS,weights.gust],
-    [visS,weights.visibility],[periodS,weights.period],[windS,weights.wind]
-  ];
-  let logScore=0, totalW=0;
-  for(const [v,w] of parts){ if(v!=null){ logScore+=w*Math.log(Math.max(0.25,v)); totalW+=w; } }
-  let s=totalW?Math.exp(logScore/totalW):null;
-  if(s==null) return null;
-
-  // Direction is a secondary adjustment only. East/offshore flow can help
-  // recovery on this coast, but never rescues a bad sea state.
-  s+=windCleaningBonus(wind,windDirection)*0.35;
-
-  // The 72 h memory is deliberately stronger than a small "bonus" model.
-  if(finite(memoryPenalty) && memoryPenalty>0) s-=Math.min(2.2,Number(memoryPenalty)*1.20);
-
-  // Hard caps for combinations that are poor enough that an additive model
-  // should not be allowed to produce a deceptively good fishing score.
-  const caps=[];
-  if(visibility!=null && visibility<1.0) caps.push(4.0);
-  if(gust>30) caps.push(4.0);
-  if(e>700) caps.push(3.0);
-  if(wave>1.5) caps.push(4.0);
-  if(e>500 && wave>1.3) caps.push(3.0);
-  const severe=[wave>1.4,gust>25,e>400,visibility!=null&&visibility<1.5].filter(Boolean).length;
-  if(severe>=3) caps.push(2.5);
-  if(caps.length) s=Math.min(s,...caps);
-
+  let s=10;
+  // Practical spearfishing thresholds: low wave, short/moderate period,
+  // low gusts and <=200 kJ are the favourable zone.
+  if(wave>0.8) s-=Math.min(3.5,(wave-0.8)*3.2);
+  if(wave>1.0) s-=1.0;
+  if(wave>1.4) s-=1.5;
+  if(wave>1.8) s-=1.5;
+  if(period>10) s-=Math.min(1.8,(period-10)*0.45);
+  if(period>13) s-=1.0;
+  if(gust>10) s-=Math.min(2.8,(gust-10)*0.14);
+  if(gust>20) s-=1.2;
+  if(wind>10) s-=Math.min(1.2,(wind-10)*0.08);
+  s-=energyPenalty(e);
+  s+=windCleaningBonus(wind,windDirection);
   return Math.max(0,Math.min(10,Number(s.toFixed(1))));
 }
-function maritimeScore(wave,period,wind,gust,windDirection,memoryPenalty=0){
-  return fishingConditionScore(wave,period,wind,gust,windDirection,null,memoryPenalty);
-}
 function visibilityScoreAdjustment(v){
-  // Kept for compatibility with the UI/API, but visibility is now a major
-  // weighted component of the final fishing score rather than a small bonus.
   if(!finite(v)) return 0;
   const n=Number(v);
-  if(n>=4) return 0.2;
-  if(n>=3) return 0;
-  if(n>=2) return -0.5;
+  if(n>=4) return 0.3;
+  if(n>=3) return 0.1;
+  if(n>=2) return 0;
   if(n>=1.5) return -1.0;
-  if(n>=1) return -1.5;
-  return -2.5;
+  if(n>=1) return -2.0;
+  return -3.0;
 }
-function modelScore(wave,period,wind,gust,windDirection,visibility,memoryPenalty=0){
-  return fishingConditionScore(wave,period,wind,gust,windDirection,visibility,memoryPenalty);
+function modelScore(wave,period,wind,gust,windDirection){
+  return fishingConditionScore(wave,period,wind,gust,windDirection);
 }
 function classify(s){
   if(s==null) return ['⚪','Sem classificação'];
@@ -397,12 +359,10 @@ function seaMemory(targetTime,mh,wh){
   if(finite(h.max24)) penalty+=clamp((h.max24-1.4)*0.30,0,0.75);
   if(finite(h.highWaveFrac72)) penalty+=h.highWaveFrac72*0.55;
   if(finite(h.rain72)&&h.rain72>8) penalty+=Math.min(0.45,(h.rain72-8)*0.035);
-  if(finite(h.avg24)&&finite(h.avg72)&&h.avg24<h.avg72-0.15){ recovery+=0.38; reasons.push('mar a recuperar'); }
-  if(finite(h.avg24)&&finite(h.avg72)&&h.avg24>h.avg72+0.15){ penalty+=0.28; reasons.push('mar a deteriorar'); }
-  if(finite(h.trend12)&&h.trend12<-0.15){ recovery+=0.25; reasons.push('onda a baixar'); }
-  if(finite(h.trend12)&&h.trend12>0.15){ penalty+=0.28; reasons.push('onda a subir'); }
+  if(finite(h.avg24)&&finite(h.avg72)&&h.avg24<h.avg72-0.15){ recovery+=0.30; reasons.push('mar a recuperar'); }
+  if(finite(h.trend12)&&h.trend12<-0.15){ recovery+=0.22; reasons.push('onda a baixar'); }
   if(penalty>0.75) reasons.push('efeito residual da agitação');
-  const net=clamp(penalty-recovery,-0.10,2.0);
+  const net=clamp(penalty-recovery,-0.25,1.8);
   return {penalty:Number(net.toFixed(2)),recovery:Number(recovery.toFixed(2)),reasons,history:h};
 }
 function scoreWithMemory(base,mem){
@@ -447,13 +407,13 @@ function buildDailyForecast(hourly, weatherDaily){
     const set=sunsetByDay[d]?.slice(11,16)||'21:00';
     const daylight=day.filter(x=>{const t=x.time.slice(11,16);return t>=rise&&t<=set;});
     const pool=daylight;
-    const ranked=[...pool].sort((a,b)=>(b.score??-1)-(a.score??-1));
+    const top=[...pool].sort((a,b)=>(b.score??-1)-(a.score??-1)).slice(0,6);
     const avg=(arr,key)=>{const v=arr.map(x=>Number(x[key])).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
-    const best=ranked[0]||null;
+    const best=top[0]||null;
     if(!best) continue;
     const favorableBest = best.score >= 4 ? best : null;
-    const avgScore=avg(pool,'score') ?? best.score;
-    const avgVis=avg(pool,'underwaterVisibility');
+    const avgScore=top.length?top.reduce((a,x)=>a+x.score,0)/top.length:best.score;
+    const avgVis=avg(top,'underwaterVisibility');
     const waves=avg(pool,'wave'), winds=avg(pool,'wind');
     const memoryAvg=avg(pool,'memoryPenalty');
     const energyAvg=avg(pool,'energyKJ');
@@ -505,7 +465,7 @@ function buildDisplayHourly(hourly, daily, today){
 function buildSpot(name,marine,weather){
   const mc=marine.current||{}, wc=weather.current||{};
   const wave=num(mc.wave_height), period=num(mc.wave_period), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
-  const baseScore=maritimeScore(wave,period,wind,gust,num(wc.wind_direction_10m));
+  const baseScore=modelScore(wave,period,wind,gust,num(wc.wind_direction_10m));
 
   const e=energy(wave,period);
 
@@ -517,10 +477,10 @@ function buildSpot(name,marine,weather){
     const w=num(mh.wave_height?.[i]), p=num(mh.wave_period?.[i]), wi=num(wh.wind_speed_10m?.[i]), g=num(wh.wind_gusts_10m?.[i]);
     const mem=seaMemory(time,mh,wh);
     const windDir=num(wh.wind_direction_10m?.[i]);
-    const base=maritimeScore(w,p,wi,g,windDir);
+    const base=modelScore(w,p,wi,g,windDir);
     const underwaterVisibility=estimateHourlyVisibilityAt({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:windDir,current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])},mem);
     const memoryScore=scoreWithMemory(base,mem);
-    const finalScore=modelScore(w,p,wi,g,windDir,underwaterVisibility,mem.penalty);
+    const finalScore=memoryScore==null?null:Number(clamp(memoryScore+visibilityScoreAdjustment(underwaterVisibility),0,10).toFixed(1));
     hourly.push({
       time, wave:w, waveDirection:num(mh.wave_direction?.[i]), period:p,
       peakPeriod:num(mh.wave_peak_period?.[i]), swell:num(mh.swell_wave_height?.[i]),
@@ -566,7 +526,7 @@ function buildSpot(name,marine,weather){
     underwaterVisibility.historyPenalty=currentMem;
     underwaterVisibility.reasons=[...(underwaterVisibility.reasons||[]),'efeito acumulado dos últimos dias'].slice(0,4);
   }
-  const adjustedCurrentScore=modelScore(wave,period,wind,gust,num(wc.wind_direction_10m),underwaterVisibility.available?underwaterVisibility.estimatedMeters:null,currentMem||0);
+  const adjustedCurrentScore=memoryAdjustedScore==null?null:Number(clamp(memoryAdjustedScore+visibilityScoreAdjustment(underwaterVisibility.available?underwaterVisibility.estimatedMeters:null),0,10).toFixed(1));
   const finalClass=classify(adjustedCurrentScore);
   const dailyBest=dailyForecast.slice().sort((a,b)=>b.score-a.score)[0]||null;
 
