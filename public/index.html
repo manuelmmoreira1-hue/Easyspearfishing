@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Easyspearfishing</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3h2r0J2YfQn8vYh4R6hN9w8tJ3k8=" crossorigin="" />
 <style>
 :root{--purple:#7b2cbf;--orange:#ff7a00;--sea:#0b7895;--sea2:#0f9db7;--ink:#14202b;--muted:#66758a;--bg:#eef7fa;--card:#fff;--line:#d9e7ec;--soft:#f5fafb;--green:#159447;--yellow:#b77900;--red:#c43d3d}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at 20% -10%,#c9f5ff 0,#eaf8fb 24%,#f5f8fb 55%,#eef4f7 100%);color:var(--ink)}
@@ -20,7 +19,7 @@ h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
 .spot{border:1px solid var(--line);border-radius:18px;padding:16px;background:linear-gradient(180deg,#fff 0%,#f9fcfd 100%);text-align:left;transition:.15s;min-height:218px;box-shadow:0 6px 18px rgba(20,65,90,.05)}.spot:hover{border-color:#7bbfd0;transform:translateY(-2px);box-shadow:0 10px 24px rgba(20,65,90,.09)}.spot.active{border:2px solid var(--purple);padding:15px;box-shadow:0 0 0 3px #7b2cbf16}
 .spotHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.name{font-weight:850;font-size:18px}.modelScore{font-size:24px;font-weight:950;color:var(--green)}.scoreGood{color:#159447}.scoreFair{color:#a66a00}.scoreWarn{color:#e27619}.scoreBad{color:#c43d3d}.status{font-size:12px;color:#27663e;background:#edf9f0;border-radius:999px;padding:5px 9px;display:inline-flex;align-items:center;margin-top:8px}.spotMetrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px}.spotMetric{background:var(--soft);border:1px solid #e7edf4;border-radius:12px;padding:8px 7px;min-width:0}.spotMetric small{display:block;color:var(--muted);font-size:10px;margin-bottom:2px}.spotMetric b{font-size:13px;white-space:nowrap}.spotWindow{margin-top:11px;padding:9px 10px;border-radius:11px;background:#f5f0ff;border:1px solid #eadcff;color:#5b21b6;font-size:12px}.spotBar{height:6px;border-radius:99px;background:#edf1f4;overflow:hidden;margin-top:10px}.spotBar span{display:block;height:100%;border-radius:99px}.barGood{background:#159447}.barFair{background:#c99b24}.barWarn{background:#e27619}.barBad{background:#c43d3d}.spotReal{margin-top:10px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}.energyGood{color:#159447}.energyFair{color:#a66a00}.energyWarn{color:#e27619}.energyBad{color:#c43d3d}
-#map{height:390px;border-radius:16px;border:1px solid #cfe4ea;overflow:hidden;margin-top:14px;box-shadow:0 8px 24px rgba(15,78,100,.08)}.mapLegend{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px}.mapLegend span{font-size:11px;color:var(--muted);background:#f7fafb;border:1px solid #e3edf0;border-radius:999px;padding:5px 8px}.leaflet-popup-content{font-family:Inter,system-ui,sans-serif}.mapPopupTitle{font-weight:900;font-size:15px;margin-bottom:5px}.mapPopupScore{font-size:18px;font-weight:900}.row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:var(--soft);border:1px solid #e7edf4;border-radius:999px;padding:5px 8px;font-size:12px}.visibilityPrediction{margin-top:12px;padding:14px;border-radius:15px;background:linear-gradient(135deg,#f7f0ff,#eef9f3);border:1px solid #e7d8ff}.visibilityPrediction .vpBig{font-size:30px;font-weight:900;color:#5b21b6}.visibilityPrediction .vpMeta{color:#4b5563;font-size:13px;margin-top:4px}.community{margin-top:9px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}
+row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:var(--soft);border:1px solid #e7edf4;border-radius:999px;padding:5px 8px;font-size:12px}.visibilityPrediction{margin-top:12px;padding:14px;border-radius:15px;background:linear-gradient(135deg,#f7f0ff,#eef9f3);border:1px solid #e7d8ff}.visibilityPrediction .vpBig{font-size:30px;font-weight:900;color:#5b21b6}.visibilityPrediction .vpMeta{color:#4b5563;font-size:13px;margin-top:4px}.community{margin-top:9px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}
 .detailHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.bigScore{font-size:34px;font-weight:950;color:var(--green)}.pill{border-radius:999px;padding:7px 11px;background:#edf9f0;font-weight:800}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}.metric{background:var(--soft);border-radius:13px;padding:11px}.metric small{display:block;color:var(--muted)}.metric b{display:block;margin-top:3px;font-size:16px}
 .sectionTitle{margin:22px 0 10px;font-size:18px}.quickReport{display:inline-flex;align-items:center;gap:6px;margin-top:10px}.communityBox{scroll-margin-top:18px}.best{background:#eef9f0;border:1px solid #d7efdc;border-radius:14px;padding:13px;font-weight:800}
@@ -59,8 +58,6 @@ footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
 <button class="filter" data-filter="score">Melhores condições</button>
 <button class="filter" data-filter="visibility">Melhor visibilidade observada</button>
 </div>
-<div id="map" aria-label="Mapa dos spots de pesca submarina"></div>
-<div class="mapLegend"><span>🟢 8–10 · favorável</span><span>🟡 6–7,9 · razoável</span><span>🟠 4–5,9 · atenção</span><span>🔴 0–3,9 · exigente</span></div>
 <div id="spots" class="grid" style="margin-top:12px"></div>
 </section>
 
@@ -73,10 +70,9 @@ footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
 Easyspearfishing · Dados meteorológicos/marinhos por modelos Open-Meteo. A visibilidade subaquática é uma estimativa derivada das condições do mar/tempo e deve ser confirmada por observações reais no local.
 </footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let spots=[],selected=null,filter='all',map=null,mapMarkers=[];
+let spots=[],selected=null,filter='all';
 
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function stars(v){if(v==null)return '—';return '★'.repeat(Math.round(v))+'☆'.repeat(5-Math.round(v))}
@@ -103,28 +99,6 @@ function scoreClass(v){const n=Number(v);return n>=8?'scoreGood':n>=6?'scoreFair
 function barClass(v){const n=Number(v);return n>=8?'barGood':n>=6?'barFair':n>=4?'barWarn':'barBad'}
 function energyValue(v){const m=String(v??'').match(/[0-9]+(?:\.[0-9]+)?/);return m?Number(m[0]):null}
 function energyClass(v){const n=Number(v);return !Number.isFinite(n)?'':n<200?'energyGood':n<300?'energyFair':n<500?'energyWarn':'energyBad'}
-function mapColor(score){const n=Number(score);return n>=8?'#159447':n>=6?'#c99b24':n>=4?'#e27619':'#c43d3d'}
-function renderMap(){
-  const el=$('#map'); if(!el || !window.L) return;
-  if(!map){
-    map=L.map(el,{scrollWheelZoom:false}).setView([41.27,-8.72],11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
-  }
-  mapMarkers.forEach(m=>m.remove()); mapMarkers=[];
-  const valid=spots.filter(s=>Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon)));
-  valid.forEach(s=>{
-    const score=Number(s.score), color=mapColor(score), e=energyValue(s.energy);
-    const visp=s.underwaterVisibilityPrediction?.estimatedMeters;
-    const marker=L.circleMarker([Number(s.lat),Number(s.lon)],{radius:10,fillColor:color,color:'#fff',weight:3,fillOpacity:.95});
-    marker.bindPopup(`<div class="mapPopupTitle">📍 ${esc(s.name)}</div><div class="mapPopupScore" style="color:${color}">${s.score??'—'}/10</div><div>👁️ Vis. ${visp!=null?Number(visp).toFixed(1)+' m':'—'}<br>⚡ Energia ${e!=null?Math.round(e)+' kJ':'—'}<br>🌊 Onda ${esc(s.wave??'—')}</div>`);
-    marker.on('click',()=>{selected=s;renderSpots();renderDetail();});
-    marker.addTo(map); mapMarkers.push(marker);
-  });
-  if(valid.length){
-    const bounds=L.latLngBounds(valid.map(s=>[Number(s.lat),Number(s.lon)]));
-    map.fitBounds(bounds.pad(.12),{padding:[10,10],maxZoom:12});
-  }
-}
 function renderSpots(){
   const el=$('#spots'); el.innerHTML='';
   filtered().forEach(s=>{
@@ -231,11 +205,11 @@ async function submitObs(e){
 async function load(force=false){
   const r=await fetch('/api/spots?'+(force?'force=1&':'' )+'t='+Date.now(),{cache:'no-store'});
   if(!r.ok)throw new Error('API '+r.status);
-  const j=await r.json();spots=j.spots||[];renderStats();renderSpots();renderMap();
+  const j=await r.json();spots=j.spots||[];renderStats();renderSpots();
   if(selected){const s=spots.find(x=>x.name===selected.name);selected=s||null;renderDetail()}
   else if(spots.length) {selected=spots.find(x=>x.name==='Marreco')||spots[0];renderSpots();renderDetail()}
 }
-$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderSpots();renderMap()});
+$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderSpots()});
 $('#refresh').onclick=()=>load(true).catch(e=>alert('Erro a atualizar: '+e.message));
 load(false).catch(e=>{$('#spots').innerHTML='<div class="errorBox">Não foi possível carregar os dados: '+esc(e.message)+'</div>'});
 </script>
