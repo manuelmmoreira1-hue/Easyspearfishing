@@ -677,6 +677,14 @@ app.post('/api/observations',(req,res)=>{
 
 app.get('/api/data-info',(req,res)=>res.json({observationsFile:'data/observations.json',count:readObs().length}));
 
+// Anonymous aggregate visit counter: no IPs or personal identifiers are stored.
+const STATS_FILE = path.join(DATA_DIR,'stats.json');
+if(!fs.existsSync(STATS_FILE)) fs.writeFileSync(STATS_FILE, JSON.stringify({total:0,days:{}},null,2),'utf8');
+function readStats(){ try{return JSON.parse(fs.readFileSync(STATS_FILE,'utf8'));}catch{return {total:0,days:{}};} }
+function writeStats(x){ fs.writeFileSync(STATS_FILE, JSON.stringify(x,null,2),'utf8'); }
+app.post('/api/visit',(req,res)=>{ const x=readStats(); const day=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Lisbon'}); x.total=(x.total||0)+1; x.days=x.days||{}; x.days[day]=(x.days[day]||0)+1; writeStats(x); res.json({ok:true}); });
+app.get('/api/stats',(req,res)=>{ const x=readStats(); const day=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Lisbon'}); res.json({totalVisits:x.total||0,todayVisits:(x.days&&x.days[day])||0,updatedAt:new Date().toISOString()}); });
+
 app.use(express.static(PUBLIC_DIR,{etag:false,lastModified:false,setHeaders:(res)=>res.setHeader('Cache-Control','no-store')}));
 app.use((req,res)=>{
   if(req.path.startsWith('/api/')) return res.status(404).json({error:'Endpoint não encontrado'});

@@ -1,8 +1,6 @@
 services:
   - type: web
-    name: easyspearfishing
-    runtime: node
-    plan: free
+    name: Easyspearfishing
+    env: node
     buildCommand: npm install
     startCommand: npm start
-    autoDeploy: true
