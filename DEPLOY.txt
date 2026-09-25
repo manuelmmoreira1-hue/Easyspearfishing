@@ -1,0 +1,9 @@
+IMPORTANTE: copiar o CONTEUDO desta pasta para a RAIZ do repositorio GitHub.
+Na raiz devem ficar: package.json, render.yaml, server/, public/, data/.
+NAO colocar a pasta 'easy' dentro do repositorio.
+Depois fazer commit/push e no Render fazer Manual Deploy -> Deploy latest commit.
+A V2.4 inclui:
+- logo Easyspearfishing de pesca submarina
+- separadores por dia na tabela horaria
+- horas apenas de luz e leitura ~3 em 3 horas
+- observacoes da comunidade antes da tabela

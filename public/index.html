@@ -8,9 +8,9 @@
 :root{--purple:#7b2cbf;--orange:#ff7a00;--sea:#0b7895;--sea2:#0f9db7;--ink:#14202b;--muted:#66758a;--bg:#eef7fa;--card:#fff;--line:#d9e7ec;--soft:#f5fafb;--green:#159447;--yellow:#b77900;--red:#c43d3d}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#eaf7fb 0,#f4f7fb 260px);color:var(--ink)}
 button,input,select,textarea{font:inherit}button{cursor:pointer}
-.hero{background:linear-gradient(120deg,#063f5b,#087d98 45%,#7b2cbf 78%,#ff7a00);color:#fff;box-shadow:0 8px 28px rgba(4,83,110,.18)}
+.hero{background:#063f5b url('/easyspearfishing_logo.png') center/cover no-repeat;color:#fff;box-shadow:0 8px 28px rgba(4,83,110,.18);min-height:132px}.hero:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,43,62,.08),rgba(3,43,62,.12));pointer-events:none}.hero{position:relative}.heroTop{position:relative;z-index:1}
 .wrap{max-width:1380px;margin:auto;padding:18px}
-.heroTop{display:flex;justify-content:space-between;gap:20px;align-items:center}
+.heroTop{display:flex;justify-content:space-between;gap:20px;align-items:center;min-height:132px}.brandSpacer{flex:1;min-height:92px}.hero .updated{background:rgba(0,28,45,.52);padding:7px 10px;border-radius:10px;backdrop-filter:blur(3px)}
 h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:12px;opacity:.85;text-align:right}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
 .toolbar h2{margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -25,7 +25,7 @@ h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:
 .detailHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.bigScore{font-size:34px;font-weight:950;color:var(--green)}.pill{border-radius:999px;padding:7px 11px;background:#edf9f0;font-weight:800}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}.metric{background:var(--soft);border-radius:13px;padding:11px}.metric small{display:block;color:var(--muted)}.metric b{display:block;margin-top:3px;font-size:16px}
 .sectionTitle{margin:22px 0 10px;font-size:18px}.quickReport{display:inline-flex;align-items:center;gap:6px;margin-top:10px}.communityBox{scroll-margin-top:18px}.best{background:#eef9f0;border:1px solid #d7efdc;border-radius:14px;padding:13px;font-weight:800}
-.hourly{overflow:auto}.hourly table{border-collapse:separate;border-spacing:0;min-width:1100px;width:100%;font-size:12px}.hourly th,.hourly td{padding:8px 9px;border-bottom:1px solid #e9eef4;white-space:nowrap;text-align:right}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f5f7fa}.hourly tr.bestRow{background:#eff9f0;font-weight:800}.dailyForecast{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.dayCard{border:1px solid var(--line);border-radius:14px;padding:11px;background:var(--soft)}.dayCard .day{font-weight:850}.dayCard .dayScore{font-size:24px;font-weight:950;color:var(--green);margin-top:3px}.dayCard small{color:var(--muted)}.dayCard .dayMeta{font-size:12px;margin-top:5px;line-height:1.45}.memoryTag{display:inline-block;margin-top:7px;padding:3px 7px;border-radius:999px;background:#fff;border:1px solid #e7edf4;font-size:11px}@media(max-width:1100px){.dailyForecast{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.dailyForecast{grid-template-columns:repeat(2,1fr)}}
+.hourly{overflow:auto}.hourly table{border-collapse:separate;border-spacing:0;min-width:1100px;width:100%;font-size:12px}.hourly th,.hourly td{padding:8px 9px;border-bottom:1px solid #e9eef4;white-space:nowrap;text-align:right}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f5f7fa}.hourly tr.bestRow{background:#eff9f0;font-weight:800}.hourly tr.dayDivider td{background:#e7f5f9;color:#07566c;font-size:13px;font-weight:900;text-align:left;padding:9px 10px;border-top:8px solid #fff;position:sticky;left:0}.dailyForecast{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.dayCard{border:1px solid var(--line);border-radius:14px;padding:11px;background:var(--soft)}.dayCard .day{font-weight:850}.dayCard .dayScore{font-size:24px;font-weight:950;color:var(--green);margin-top:3px}.dayCard small{color:var(--muted)}.dayCard .dayMeta{font-size:12px;margin-top:5px;line-height:1.45}.memoryTag{display:inline-block;margin-top:7px;padding:3px 7px;border-radius:999px;background:#fff;border:1px solid #e7edf4;font-size:11px}@media(max-width:1100px){.dailyForecast{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.dailyForecast{grid-template-columns:repeat(2,1fr)}}
 .communityGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.communityBox{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff}
 .ratingGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rating{background:var(--soft);padding:10px;border-radius:12px}.rating b{font-size:22px}
 .obsList{display:grid;gap:8px;margin-top:10px}.obs{background:var(--soft);border-radius:13px;padding:11px}.obsTop{display:flex;justify-content:space-between;gap:10px}.stars{letter-spacing:1px}
@@ -39,8 +39,7 @@ footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
 </head>
 <body>
 <header class="hero"><div class="wrap heroTop">
-<div><h1>🎯 Easyspearfishing</h1><p>Condições + previsão + observações reais de pesca submarina · Foz do Douro → Póvoa</p></div>
-<div class="updated" id="updated">A carregar…</div>
+<div class="brandSpacer" aria-label="Easyspearfishing"></div><div class="updated" id="updated">A carregar…</div>
 </div></header>
 
 <main class="wrap">
@@ -81,6 +80,7 @@ function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function stars(v){if(v==null)return '—';return '★'.repeat(Math.round(v))+'☆'.repeat(5-Math.round(v))}
 function fmtDate(x){if(!x)return '—';return new Date(x).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
 function vis(v){return v==null?'—':Number(v).toFixed(1)+' m'}
+function dayLabel(iso){if(!iso)return '—';const d=new Date(iso+'T12:00:00');const w=d.toLocaleDateString('pt-PT',{weekday:'long'});const cap=w.charAt(0).toUpperCase()+w.slice(1);return cap+' · '+d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}
 
 function renderStats(){
   $('#statSpots').textContent=spots.length;
@@ -171,7 +171,7 @@ function renderDetail(){
   <div class="sectionTitle">📈 Previsão útil — horas de luz, de 3 em 3 horas</div>
   <div class="notice" style="margin-bottom:8px">Mostramos apenas horas com luz e aproximadamente uma leitura a cada 3 horas. O cálculo do score continua a usar a série horária completa.</div>
   <div class="hourly"><table><thead><tr><th>Hora</th><th>Score</th><th>Vis. sub.</th><th>Onda</th><th>Período</th><th>Direção</th><th>Swell</th><th>Vento</th><th>Rajadas</th><th>Vis. atm.</th><th>Chuva</th><th>Nuvens</th></tr></thead><tbody>
-  ${h.map(x=>`<tr class="${s.bestWindowTime===x.time?'bestRow':''}"><td>${esc(x.time?.slice(11,16))}</td><td>${x.score??'—'}${x.memoryPenalty>0.2?` <span title="Ajuste das condições anteriores">↘</span>`:''}</td><td>${x.underwaterVisibility!=null?x.underwaterVisibility.toFixed(1)+' m':'—'}</td><td>${x.wave!=null?x.wave.toFixed(1)+' m':'—'}</td><td>${x.period!=null?x.period.toFixed(1)+' s':'—'}</td><td>${x.waveDirection!=null?esc(compass(x.waveDirection)):'—'}</td><td>${x.swell!=null?x.swell.toFixed(1)+' m':'—'} ${x.swellDirection!=null?esc(compass(x.swellDirection)):''}</td><td>${x.wind!=null?x.wind.toFixed(1)+' km/h':'—'}</td><td>${x.gust!=null?x.gust.toFixed(1)+' km/h':'—'}</td><td>${x.visibility!=null?(x.visibility/1000).toFixed(1)+' km':'—'}</td><td>${x.rainChance!=null?x.rainChance+'%':'—'}</td><td>${x.cloud!=null?x.cloud+'%':'—'}</td></tr>`).join('')}
+  ${(()=>{let last='';return h.map(x=>{const date=x.time?.slice(0,10)||'';const label=dayLabel(date);const head=date!==last?`<tr class="dayDivider"><td colspan="12">📅 ${esc(label)}</td></tr>`:'';last=date;return head+`<tr class="${s.bestWindowTime===x.time?'bestRow':''}"><td>${esc(x.time?.slice(11,16))}</td><td>${x.score??'—'}${x.memoryPenalty>0.2?` <span title="Ajuste das condições anteriores">↘</span>`:''}</td><td>${x.underwaterVisibility!=null?x.underwaterVisibility.toFixed(1)+' m':'—'}</td><td>${x.wave!=null?x.wave.toFixed(1)+' m':'—'}</td><td>${x.period!=null?x.period.toFixed(1)+' s':'—'}</td><td>${x.waveDirection!=null?esc(compass(x.waveDirection)):'—'}</td><td>${x.swell!=null?x.swell.toFixed(1)+' m':'—'} ${x.swellDirection!=null?esc(compass(x.swellDirection)):''}</td><td>${x.wind!=null?x.wind.toFixed(1)+' km/h':'—'}</td><td>${x.gust!=null?x.gust.toFixed(1)+' km/h':'—'}</td><td>${x.visibility!=null?(x.visibility/1000).toFixed(1)+' km':'—'}</td><td>${x.rainChance!=null?x.rainChance+'%':'—'}</td><td>${x.cloud!=null?x.cloud+'%':'—'}</td></tr>`}).join('')})()}
   </tbody></table></div>
   <p class="notice">⚠️ ${esc(s.note)}</p><p class="notice">🧠 Memória de condições: ${s.historyModel?.hours||72}h anteriores · ajuste atual ${s.historyModel?.currentPenalty!=null?s.historyModel.currentPenalty.toFixed(2):'—'}.</p>`;
   $('#obsForm').addEventListener('submit',submitObs);
