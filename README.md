@@ -1,25 +1,35 @@
-# Easyspearfishing
+# Easyspearfishing 2.0 — versão completa
 
-App de condições para pesca submarina na costa Foz do Douro → Póvoa de Varzim.
+Esta versão recupera e amplia o trabalho anterior:
+
+- 12 spots Foz do Douro → Póvoa de Varzim
+- score técnico por spot
+- estado/emoji
+- onda, período, direção, água, vento, rajadas
+- swell, período do swell, maré e corrente
+- melhor janela
+- previsão horária
+- visibilidade atmosférica separada de visibilidade subaquática
+- área de observações reais da comunidade
+- média de visibilidade observada por spot
+- média de condições/clareza/atividade de peixe
+- número de observações e última observação
+- formulário para novos relatos
+- API agregada `/api/spots` para evitar 24 pedidos simultâneos
+- cache do Open-Meteo
+- cache-busting/no-store no frontend
+- remoção do service worker antigo: NÃO incluir `public/sw.js`
 
 ## Estrutura
-- `public/index.html` — interface
-- `server/index.js` — API e agregação dos dados
 
-## Deploy
-- Node.js
-- Start command: `node server/index.js`
-- O servidor faz **uma chamada Marine + uma chamada Weather em lote para os 12 spots**, em vez de abrir 12 pedidos simultâneos.
-- Cache de 55 minutos.
-- `/api/health` — estado do serviço
-- `/api/test-sources` — teste rápido das fontes externas
-- `/api/forecast` — previsão agregada dos 12 spots
+- `public/index.html`
+- `server/index.js`
+- `data/observations.json`
+- `package.json`
+- `render.yaml`
 
-## Fontes
-Open-Meteo Marine, Open-Meteo Weather e IPMA. A visibilidade subaquática é uma estimativa heurística; não são inventados valores de Copernicus.
+## Importante sobre observações
 
+O servidor grava os relatos em `data/observations.json`. Em Render Free, o filesystem do serviço não é uma base de dados persistente: os relatos podem desaparecer depois de um novo deploy/restart. Para transformar a área de observações numa comunidade permanente, a próxima etapa deve ligar esta API a uma base de dados persistente (por exemplo Postgres/Supabase) através de variáveis de ambiente.
 
-## V3.1.4
-- Weather API reduzido para uma única célula costeira de referência para evitar consumo excessivo da quota gratuita.
-- Cache persistente do último forecast válido e fallback temporário quando uma fonte externa responde HTTP 429.
-- Marine continua a ser solicitado por spot.
+Não usar os valores do modelo como medição direta de visibilidade subaquática.

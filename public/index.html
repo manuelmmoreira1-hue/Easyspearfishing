@@ -5,179 +5,189 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Easyspearfishing</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7fa;color:#15202b}
-header{background:linear-gradient(135deg,#7b2cbf,#ff7a00);color:#fff;padding:22px 18px}
-.wrap{max-width:1200px;margin:auto;padding:16px}
-h1{margin:0;font-size:30px} header p{margin:5px 0 0;opacity:.92}
-.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 5px 20px #0000000d}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.spot{border:1px solid #dce3ea;border-radius:14px;padding:13px;background:#fff;text-align:left;cursor:pointer;width:100%;font:inherit}
-.spot:hover{border-color:#7b2cbf}.spot.active{border-color:#7b2cbf;box-shadow:0 0 0 2px #7b2cbf22}
-.name{font-weight:800}.score{font-size:20px;font-weight:900;margin:4px 0}.mini{font-size:12px;color:#64748b}
-.status{display:inline-block;padding:5px 9px;border-radius:99px;background:#eef7ee;margin-left:6px}
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-.metric{background:#f6f8fa;border-radius:12px;padding:10px}.metric small{color:#64748b}.metric b{font-size:16px}
-.warn{font-size:12px;color:#64748b;margin-top:12px}
-.hourly{overflow-x:auto;margin-top:16px}.hourly table{border-collapse:separate;border-spacing:0;min-width:980px;width:100%;font-size:13px}
-.hourly th,.hourly td{padding:8px 10px;border-bottom:1px solid #e6ebf0;text-align:right;white-space:nowrap}
-.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f6f8fa}
-.best{background:#eef7ee;font-weight:800}.source{font-size:12px;color:#64748b;margin-top:12px}
-.loading{opacity:.65}.error{color:#b42318}.ok{color:#18794e}
-.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
-button.refresh{border:1px solid #dce3ea;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}h1{font-size:25px}.wrap{padding:10px}}
-@media(max-width:480px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+:root{--purple:#7b2cbf;--orange:#ff7a00;--ink:#14202b;--muted:#66758a;--bg:#f4f7fb;--card:#fff;--line:#e0e7ef;--soft:#f7f9fc;--green:#159447;--yellow:#b77900;--red:#c43d3d}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.hero{background:linear-gradient(120deg,#54168c,#7b2cbf 48%,#ff7a00);color:#fff}
+.wrap{max-width:1380px;margin:auto;padding:18px}
+.heroTop{display:flex;justify-content:space-between;gap:20px;align-items:center}
+h1{font-size:32px;margin:0}.hero p{margin:6px 0 0;opacity:.9}.updated{font-size:12px;opacity:.85;text-align:right}
+.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.toolbar h2{margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:11px;font-weight:700}.btn.primary{background:var(--purple);color:#fff;border-color:var(--purple)}.btn:disabled{opacity:.5;cursor:wait}
+.dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}.stat small{color:var(--muted);display:block}.stat b{font-size:24px;display:block;margin-top:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 8px 25px rgba(30,50,80,.05)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.spot{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff;text-align:left;transition:.15s;min-height:142px}.spot:hover{border-color:#a85be3;transform:translateY(-1px)}.spot.active{border:2px solid var(--purple);padding:13px;box-shadow:0 0 0 3px #7b2cbf16}
+.spotHead{display:flex;justify-content:space-between;gap:8px}.name{font-weight:850;font-size:17px}.modelScore{font-size:22px;font-weight:900;color:var(--green)}.status{font-size:12px;color:#27663e;background:#edf9f0;border-radius:999px;padding:4px 8px;display:inline-block;margin-top:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:var(--soft);border:1px solid #e7edf4;border-radius:999px;padding:5px 8px;font-size:12px}.community{margin-top:9px;padding-top:9px;border-top:1px solid #edf0f4;color:var(--muted);font-size:12px}
+.detailHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.bigScore{font-size:34px;font-weight:950;color:var(--green)}.pill{border-radius:999px;padding:7px 11px;background:#edf9f0;font-weight:800}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}.metric{background:var(--soft);border-radius:13px;padding:11px}.metric small{display:block;color:var(--muted)}.metric b{display:block;margin-top:3px;font-size:16px}
+.sectionTitle{margin:22px 0 10px;font-size:18px}.best{background:#eef9f0;border:1px solid #d7efdc;border-radius:14px;padding:13px;font-weight:800}
+.hourly{overflow:auto}.hourly table{border-collapse:separate;border-spacing:0;min-width:1100px;width:100%;font-size:12px}.hourly th,.hourly td{padding:8px 9px;border-bottom:1px solid #e9eef4;white-space:nowrap;text-align:right}.hourly th:first-child,.hourly td:first-child{text-align:left}.hourly th{position:sticky;top:0;background:#f5f7fa}.hourly tr.bestRow{background:#eff9f0;font-weight:800}
+.communityGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.communityBox{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff}
+.ratingGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.rating{background:var(--soft);padding:10px;border-radius:12px}.rating b{font-size:22px}
+.obsList{display:grid;gap:8px;margin-top:10px}.obs{background:var(--soft);border-radius:13px;padding:11px}.obsTop{display:flex;justify-content:space-between;gap:10px}.stars{letter-spacing:1px}
+.formGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;background:#fff}.field textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}
+.notice{font-size:12px;color:var(--muted);line-height:1.45}.errorBox{padding:11px;border-radius:12px;background:#fff0f0;color:#9c2c2c}.empty{padding:18px;text-align:center;color:var(--muted);background:var(--soft);border-radius:13px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}.filter{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px}.filter.active{background:var(--purple);color:#fff;border-color:var(--purple)}
+footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
+@media(max-width:950px){.dashboard{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.communityGrid{grid-template-columns:1fr}}
+@media(max-width:600px){.wrap{padding:11px}.heroTop{align-items:flex-start}.grid{grid-template-columns:1fr}.dashboard{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}.bigScore{font-size:28px}h1{font-size:26px}}
 </style>
 </head>
 <body>
-<header><div class="wrap">
-<h1>🎯 Easyspearfishing</h1>
-<p>Condições para pesca submarina — Foz do Douro → Póvoa</p>
+<header class="hero"><div class="wrap heroTop">
+<div><h1>🎯 Easyspearfishing</h1><p>Condições + previsão + observações reais de pesca submarina · Foz do Douro → Póvoa</p></div>
+<div class="updated" id="updated">A carregar…</div>
 </div></header>
 
 <main class="wrap">
-<section class="card">
-<div class="toolbar">
-<h2 style="margin:0">📍 Escolhe o spot</h2>
-<button class="refresh" onclick="loadAll()">↻ Atualizar</button>
-</div>
-<div id="spots" class="grid"></div>
+<section class="dashboard">
+<div class="stat"><small>Spots monitorizados</small><b id="statSpots">—</b></div>
+<div class="stat"><small>Melhor score do modelo</small><b id="statBest">—</b></div>
+<div class="stat"><small>Melhor spot agora</small><b id="statBestName">—</b></div>
+<div class="stat"><small>Observações da comunidade</small><b id="statObs">—</b></div>
 </section>
 
-<section class="card" id="details">
-<h2>Seleciona um spot</h2>
-<p class="mini">A app carrega automaticamente as condições por coordenadas.</p>
+<section class="card">
+<div class="toolbar">
+<div><h2>📍 Spots</h2><div class="notice">O score do modelo é independente das observações reais. A visibilidade da comunidade vem de relatos feitos por pescadores.</div></div>
+<div class="actions"><button class="btn primary" id="refresh">↻ Atualizar</button></div>
+</div>
+<div class="filters">
+<button class="filter active" data-filter="all">Todos</button>
+<button class="filter" data-filter="score">Melhores condições</button>
+<button class="filter" data-filter="visibility">Melhor visibilidade observada</button>
+</div>
+<div id="spots" class="grid" style="margin-top:12px"></div>
+</section>
+
+<section class="card" id="detail">
+<div class="empty">Seleciona um spot para abrir a análise completa.</div>
 </section>
 </main>
 
-<script>
-const spots=[
-['Foz do Douro',41.148,-8.675],['Castelo do Queijo',41.169,-8.689],['Matosinhos',41.182,-8.705],['Leça da Palmeira',41.190,-8.704],
-['Marreco',41.235,-8.724],['Perafita',41.225,-8.716],['Angeiras',41.265,-8.722],['Labruge',41.280,-8.716],
-['Mindelo',41.316,-8.724],['Azurara',41.337,-8.741],['Vila do Conde',41.353,-8.744],['Póvoa de Varzim',41.381,-8.765]
-];
+<footer class="wrap">
+Easyspearfishing · Dados meteorológicos/marinhos por modelos Open-Meteo. A visibilidade subaquática não é medida pelo modelo. Confirma sempre as condições reais no local.
+</footer>
 
-const el=document.querySelector('#spots');
-const details=document.querySelector('#details');
-const buttons=new Map();
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let spots=[],selected=null,filter='all';
 
 function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function fmtDir(d){
-  if(!Number.isFinite(Number(d)))return '—';
-  const a=['N','NE','E','SE','S','SW','W','NW'];
-  return a[Math.round(Number(d)/45)%8]
-}
-function scoreClass(s){
-  if(s==null)return '';
-  if(s>=8.5)return 'ok';
-  if(s>=7)return '';
-  return 'error';
+function stars(v){if(v==null)return '—';return '★'.repeat(Math.round(v))+'☆'.repeat(5-Math.round(v))}
+function fmtDate(x){if(!x)return '—';return new Date(x).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+function vis(v){return v==null?'—':Number(v).toFixed(1)+' m'}
+
+function renderStats(){
+  $('#statSpots').textContent=spots.length;
+  const best=[...spots].sort((a,b)=>(b.score??-1)-(a.score??-1))[0];
+  $('#statBest').textContent=best?.score!=null?best.score+'/10':'—';
+  $('#statBestName').textContent=best?.name||'—';
+  $('#statObs').textContent=spots.reduce((n,s)=>n+(s.community?.count||0),0);
+  $('#updated').textContent='Atualizado: '+new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
 }
 
-function buildButtons(){
-  el.innerHTML='';
-  spots.forEach(s=>{
-    const b=document.createElement('button');
-    b.className='spot loading';
-    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score">⏳</div><div class="mini">A carregar...</div>`;
-    b.onclick=()=>loadSpot(s,b,true);
-    el.appendChild(b);
-    buttons.set(s[0],b);
+function filtered(){
+  let a=[...spots];
+  if(filter==='score') a.sort((x,y)=>(y.score??-1)-(x.score??-1));
+  if(filter==='visibility') a.sort((x,y)=>(y.community?.visibilityAvg??-1)-(x.community?.visibilityAvg??-1));
+  return a;
+}
+function renderSpots(){
+  const el=$('#spots'); el.innerHTML='';
+  filtered().forEach(s=>{
+    const b=document.createElement('button'); b.className='spot'+(selected?.name===s.name?' active':'');
+    const c=s.community||{};
+    b.innerHTML=`<div class="spotHead"><div class="name">📍 ${esc(s.name)}</div><div class="modelScore">${s.score??'—'}<small style="font-size:12px">/10</small></div></div>
+      <div class="status">${s.statusEmoji||''} ${esc(s.status||'')}</div>
+      <div class="row" style="margin-top:9px"><span class="chip">🌊 ${esc(s.wave)}</span><span class="chip">💨 ${esc(s.wind)}</span><span class="chip">🌡️ ${esc(s.waterTemp)}</span></div>
+      <div class="community">👁️ Visibilidade real: <b>${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'}</b> · ${c.count||0} observação(ões)${c.latest?.createdAt?' · '+fmtDate(c.latest.createdAt):''}</div>`;
+    b.onclick=()=>selectSpot(s.name); el.appendChild(b);
   });
 }
-
-async function loadAll(){
-  buildButtons();
-  details.innerHTML='<h2>Seleciona um spot</h2><p class="mini">A carregar condições atuais...</p>';
-  try{
-    const r=await fetch('/api/spots?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok) throw new Error('API indisponível');
-    const data=await r.json();
-    (data.spots||[]).forEach(d=>{
-      const b=buttons.get(d.name);
-      if(!b)return;
-      b.classList.remove('loading');
-      b.innerHTML=`<div class="name">📍 ${esc(d.name)}</div><div class="score ${scoreClass(d.score)}">${esc(d.statusEmoji||'🟡')} ${d.score==null?'—':d.score+'/10'}</div><div class="mini">${esc(d.wave||'—')} • ${esc(d.wind||'—')}</div>`;
-      b.onclick=()=>render([d.name,d.lat,d.lon],d,b);
-    });
-  }catch(e){
-    spots.forEach(s=>{
-      const b=buttons.get(s[0]); if(!b)return;
-      b.classList.remove('loading');
-      b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score error">⚠️</div><div class="mini">Erro: ${esc(e.message)}</div>`;
-      b.onclick=()=>loadSpot(s,b,true);
-    });
-  }
+async function selectSpot(name){
+  const s=spots.find(x=>x.name===name); if(!s)return; selected=s; renderSpots(); renderDetail();
+  window.scrollTo({top:document.querySelector('#detail').offsetTop-15,behavior:'smooth'});
 }
+function metric(label,value){return `<div class="metric"><small>${label}</small><b>${esc(value)}</b></div>`}
 
-async function loadSpot(s,b,show){
-  try{
-    const r=await fetch(`/api/spot?lat=${s[1]}&lon=${s[2]}&name=${encodeURIComponent(s[0])}&ts=${Date.now()}`,{cache:'no-store'});
-    if(!r.ok)throw new Error('API indisponível');
-    const d=await r.json();
-    b.classList.remove('loading');
-    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score ${scoreClass(d.score)}">${esc(d.statusEmoji||'🟡')} ${d.score==null?'—':d.score+'/10'}</div><div class="mini">${esc(d.wave||'—')} • ${esc(d.wind||'—')}</div>`;
-    b.onclick=()=>render(s,d,b);
-    if(show)render(s,d,b);
-  }catch(e){
-    b.classList.remove('loading');
-    b.innerHTML=`<div class="name">📍 ${esc(s[0])}</div><div class="score error">⚠️</div><div class="mini">Erro a carregar</div>`;
-    if(show)details.innerHTML=`<h2>📍 ${esc(s[0])}</h2><p class="error">Não foi possível carregar os dados: ${esc(e.message)}</p>`;
-  }
-}
+function renderDetail(){
+  if(!selected){$('#detail').innerHTML='<div class="empty">Seleciona um spot.</div>';return}
+  const s=selected,c=s.community||{},h=s.hourly||[];
+  $('#detail').innerHTML=`
+  <div class="detailHead">
+    <div><h2 style="margin:0">📍 ${esc(s.name)}</h2><div class="notice">${esc(s.lat)}, ${esc(s.lon)}</div></div>
+    <div style="text-align:right"><div class="bigScore">${s.score??'—'}/10</div><span class="pill">${s.statusEmoji||''} ${esc(s.status||'')}</span></div>
+  </div>
+  <div class="metrics">
+    ${metric('🌊 Onda',s.wave)}${metric('⏱️ Período',s.period)}${metric('🧭 Direção',s.direction)}${metric('🌡️ Água',s.waterTemp)}
+    ${metric('💨 Vento',s.wind)}${metric('💨 Rajadas',s.gust)}${metric('⚡ Energia',s.energy)}${metric('👁️ Visibilidade atmosférica',s.atmosphericVisibility)}
+    ${metric('🌊 Swell',s.swell+' '+s.swellDirection)}${metric('⏱️ Período swell',s.swellPeriod)}${metric('🌙 Nível do mar',s.tideLevel)}${metric('↗️ Corrente',s.currentSpeed+' '+s.currentDirection)}
+  </div>
+  <div class="sectionTitle">🕒 Melhor janela calculada</div>
+  <div class="best">${esc(s.bestWindow||'Não calculado')} <span class="notice">· baseada nas próximas horas do modelo</span></div>
+  <div class="sectionTitle">📈 Previsão horária</div>
+  <div class="hourly"><table><thead><tr><th>Hora</th><th>Score</th><th>Onda</th><th>Período</th><th>Direção</th><th>Swell</th><th>Vento</th><th>Rajadas</th><th>Vis. atm.</th><th>Chuva</th><th>Nuvens</th></tr></thead><tbody>
+  ${h.map(x=>`<tr class="${s.bestWindowTime===x.time?'bestRow':''}"><td>${esc(x.time?.slice(11,16))}</td><td>${x.score??'—'}</td><td>${x.wave!=null?x.wave.toFixed(1)+' m':'—'}</td><td>${x.period!=null?x.period.toFixed(1)+' s':'—'}</td><td>${x.waveDirection!=null?esc(compass(x.waveDirection)):'—'}</td><td>${x.swell!=null?x.swell.toFixed(1)+' m':'—'} ${x.swellDirection!=null?esc(compass(x.swellDirection)):''}</td><td>${x.wind!=null?x.wind.toFixed(1)+' km/h':'—'}</td><td>${x.gust!=null?x.gust.toFixed(1)+' km/h':'—'}</td><td>${x.visibility!=null?(x.visibility/1000).toFixed(1)+' km':'—'}</td><td>${x.rainChance!=null?x.rainChance+'%':'—'}</td><td>${x.cloud!=null?x.cloud+'%':'—'}</td></tr>`).join('')}
+  </tbody></table></div>
 
-function render(s,d,b){
-  document.querySelectorAll('.spot').forEach(x=>x.classList.remove('active'));
-  b?.classList.add('active');
-
-  const rows=(d.hourly||[]).map(h=>{
-    const isBest=d.bestWindowTime && h.time===d.bestWindowTime;
-    return `<tr class="${isBest?'best':''}">
-      <td>${esc(h.time?.slice(0,10))} ${esc(h.time?.slice(11,16))}</td>
-      <td>${Number.isFinite(h.wave)?h.wave.toFixed(1):'—'} m</td>
-      <td>${fmtDir(h.waveDirection)}</td>
-      <td>${Number.isFinite(h.period)?h.period.toFixed(1):'—'} s</td>
-      <td>${Number.isFinite(h.swell)?h.swell.toFixed(1):'—'} m</td>
-      <td>${Number.isFinite(h.swellPeriod)?h.swellPeriod.toFixed(1):'—'} s</td>
-      <td>${Number.isFinite(h.wind)?h.wind.toFixed(1):'—'} km/h</td>
-      <td>${fmtDir(h.windDirection)}</td>
-      <td>${Number.isFinite(h.gust)?h.gust.toFixed(1):'—'} km/h</td>
-      <td>${Number.isFinite(h.energy)?h.energy.toFixed(1):'—'}</td>
-      <td>${Number.isFinite(h.visibility)?(h.visibility/1000).toFixed(1):'—'} km</td>
-      <td>${Number.isFinite(h.tideLevel)?h.tideLevel.toFixed(2):'—'}</td>
-    </tr>`;
-  }).join('');
-
-  details.innerHTML=`
-    <h2>📍 ${esc(s[0])} <span class="status">${esc(d.statusEmoji||'🟡')} ${esc(d.status||'Sem classificação')}</span></h2>
-    <div class="metrics">
-      <div class="metric"><small>🌊 Onda</small><br><b>${esc(d.wave)}</b></div>
-      <div class="metric"><small>⏱️ Período</small><br><b>${esc(d.period)}</b></div>
-      <div class="metric"><small>🧭 Direção</small><br><b>${esc(d.direction)}</b></div>
-      <div class="metric"><small>🌡️ Água</small><br><b>${esc(d.waterTemp)}</b></div>
-      <div class="metric"><small>💨 Vento</small><br><b>${esc(d.wind)}</b></div>
-      <div class="metric"><small>💨 Rajadas</small><br><b>${esc(d.gust)}</b></div>
-      <div class="metric"><small>⚡ Energia</small><br><b>${esc(d.energy)}</b></div>
-      <div class="metric"><small>👁️ Visibilidade atmosférica</small><br><b>${esc(d.atmosphericVisibility||d.visibility)}</b></div>
-      <div class="metric"><small>🌊 Swell</small><br><b>${esc(d.swell)} ${esc(d.swellDirection||'')}</b></div>
-      <div class="metric"><small>⏱️ Swell período</small><br><b>${esc(d.swellPeriod)}</b></div>
-      <div class="metric"><small>🌙 Nível do mar</small><br><b>${esc(d.tideLevel)}</b></div>
-      <div class="metric"><small>↗️ Corrente</small><br><b>${esc(d.currentSpeed)} ${esc(d.currentDirection)}</b></div>
+  <div class="sectionTitle">👁️ Visibilidade real — observações dos pescadores</div>
+  <div class="communityGrid">
+    <div class="communityBox">
+      <div class="ratingGrid">
+        <div class="rating"><small>Visibilidade média</small><b>${c.visibilityAvg!=null?vis(c.visibilityAvg):'—'}</b></div>
+        <div class="rating"><small>Clareza</small><b>${c.clarityAvg!=null?c.clarityAvg+'/5':'—'}</b></div>
+        <div class="rating"><small>Condições</small><b>${c.conditionsAvg!=null?c.conditionsAvg+'/5':'—'}</b></div>
+      </div>
+      <p class="notice">Estas métricas são observações reais introduzidas por utilizadores e não são confundidas com a visibilidade atmosférica do modelo.</p>
+      <div class="obsList">${c.recent?.length?c.recent.map(o=>`<div class="obs"><div class="obsTop"><b>${esc(o.author||'Anónimo')}</b><span>${fmtDate(o.createdAt)}</span></div><div>👁️ <b>${vis(o.visibility)}</b> · condições ${o.conditions}/5 · clareza ${o.clarity}/5 · peixe ${o.fishActivity}/5</div>${o.note?`<div class="notice" style="margin-top:4px">“${esc(o.note)}”</div>`:''}</div>`).join(''):'<div class="empty">Ainda não há observações para este spot.</div>'}</div>
     </div>
-    <p><b>🕒 Melhor janela calculada:</b> ${esc(d.bestWindow||'Não calculado')}</p>
-    <div class="hourly">
-      <table>
-        <thead><tr><th>Hora</th><th>Onda</th><th>Dir.</th><th>Per.</th><th>Swell</th><th>Swell Per.</th><th>Vento</th><th>Dir.</th><th>Rajadas</th><th>Energia est.</th><th>Visibilidade*</th><th>Maré*</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="communityBox">
+      <h3 style="margin-top:0">Adicionar observação</h3>
+      <form id="obsForm">
+        <div class="formGrid">
+          <div class="field"><label>Nome (opcional)</label><input name="author" maxlength="40" placeholder="Anónimo"></div>
+          <div class="field"><label>Visibilidade estimada (metros)</label><input name="visibility" type="number" min="0" max="30" step="0.5" required placeholder="Ex.: 3.5"></div>
+          <div class="field"><label>Condições gerais (1–5)</label><select name="conditions"><option value="5">5 — Muito boas</option><option value="4">4 — Boas</option><option value="3" selected>3 — Médias</option><option value="2">2 — Fracas</option><option value="1">1 — Más</option></select></div>
+          <div class="field"><label>Clareza da água (1–5)</label><select name="clarity"><option value="5">5 — Muito clara</option><option value="4">4 — Clara</option><option value="3" selected>3 — Média</option><option value="2">2 — Turva</option><option value="1">1 — Muito turva</option></select></div>
+          <div class="field"><label>Atividade de peixe (1–5)</label><select name="fishActivity"><option value="5">5 — Excelente</option><option value="4">4 — Boa</option><option value="3" selected>3 — Média</option><option value="2">2 — Fraca</option><option value="1">1 — Muito fraca</option></select></div>
+          <div class="field full"><label>Nota do mergulho</label><textarea name="note" maxlength="500" placeholder="Ex.: água limpa até 4 m, depois turva; corrente fraca…"></textarea></div>
+          <div class="full"><button class="btn primary" type="submit">Publicar observação</button></div>
+        </div>
+      </form>
+      <div id="formMsg" class="notice" style="margin-top:8px"></div>
     </div>
-    <p class="source">Fonte principal: Open-Meteo Marine + Weather. IPMA e Windguru podem ser usados como referências externas. *A visibilidade apresentada é atmosférica e a maré é nível do mar modelado; nenhuma delas representa uma medição local. A visibilidade subaquática real deve ser confirmada no local.</p>
-    <p class="warn">${esc(d.note||'')}</p>`;
+  </div>
+  <p class="notice">⚠️ ${esc(s.note)}</p>`;
+  $('#obsForm').addEventListener('submit',submitObs);
 }
-
-buildButtons();
-loadAll();
+function compass(v){if(!Number.isFinite(Number(v)))return '—';return ['N','NE','E','SE','S','SW','W','NW'][Math.round(Number(v)/45)%8]}
+async function submitObs(e){
+  e.preventDefault();const f=new FormData(e.target),btn=e.target.querySelector('button');btn.disabled=true;
+  const payload=Object.fromEntries(f.entries());payload.spot=selected.name;
+  payload.visibility=Number(payload.visibility);payload.conditions=Number(payload.conditions);payload.clarity=Number(payload.clarity);payload.fishActivity=Number(payload.fishActivity);
+  try{
+    const r=await fetch('/api/observations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json(); if(!r.ok)throw new Error(j.error||'Erro');
+    $('#formMsg').textContent='Observação publicada.';
+    await load(false); selected=spots.find(x=>x.name===payload.spot); renderDetail();
+  }catch(err){$('#formMsg').textContent='Não foi possível publicar: '+err.message}
+  finally{btn.disabled=false}
+}
+async function load(force=false){
+  const r=await fetch('/api/spots?'+(force?'force=1&':'' )+'t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('API '+r.status);
+  const j=await r.json();spots=j.spots||[];renderStats();renderSpots();
+  if(selected){const s=spots.find(x=>x.name===selected.name);selected=s||null;renderDetail()}
+  else if(spots.length) {selected=spots.find(x=>x.name==='Marreco')||spots[0];renderSpots();renderDetail()}
+}
+$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderSpots()});
+$('#refresh').onclick=()=>load(true).catch(e=>alert('Erro a atualizar: '+e.message));
+load(false).catch(e=>{$('#spots').innerHTML='<div class="errorBox">Não foi possível carregar os dados: '+esc(e.message)+'</div>'});
 </script>
 </body>
 </html>
