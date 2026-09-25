@@ -106,7 +106,7 @@ function renderSpots(){
     const c=s.community||{}; const sc=Number(s.score); const scoreCls=scoreClass(sc); const e=energyValue(s.energy);
     const energyText=e!=null?Math.round(e)+' kJ':'—';
     const energyLabel=e==null?'':e<200?'Excelente':e<300?'Boa':e<500?'Pesada':'Muito pesada';
-    const daily=s.dailyBest?`${s.dailyBest.score}/10 em ${new Date(s.dailyBest.date+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}`:'—';
+    const daily=s.dailyBest&&Number(s.dailyBest.score)>=4?`${s.dailyBest.score}/10 em ${new Date(s.dailyBest.date+'T12:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}`:'Sem janela favorável';
     b.innerHTML=`<div class="spotHead"><div class="name">📍 ${esc(s.name)}</div><div class="modelScore ${scoreCls}">${s.score??'—'}<small style="font-size:12px">/10</small></div></div>
       <div class="status">${s.statusEmoji||''} ${esc(s.status||'')}</div>
       <div class="spotMetrics">
@@ -115,7 +115,7 @@ function renderSpots(){
         <div class="spotMetric"><small>🌊 Onda</small><b>${esc(s.wave)}</b></div>
         <div class="spotMetric"><small>💨 Vento</small><b>${esc(s.wind)}</b></div>
       </div>
-      <div class="spotWindow">⭐ <b>Melhor janela:</b> ${esc(s.bestWindow||'—')}</div>
+      <div class="spotWindow">⭐ <b>${s.bestWindow==='Sem janela favorável'?'Sem janela favorável':'Melhor janela:'}</b>${s.bestWindow==='Sem janela favorável'?'':' '+esc(s.bestWindow)}</div>
       <div class="spotBar"><span class="${barClass(sc)}" style="width:${Math.max(0,Math.min(100,(Number.isFinite(sc)?sc:0)*10))}%"></span></div>
       <div class="spotReal">👁️ <b>Real:</b> ${c.visibilityAvg!=null?vis(c.visibilityAvg):'sem relatos'} · ${c.count||0} observação(ões) · 📅 <b>7 dias:</b> ${esc(daily)}</div>`;
     b.onclick=()=>selectSpot(s.name); el.appendChild(b);
@@ -148,10 +148,10 @@ function renderDetail(){
     ${s.underwaterVisibilityPrediction?.reasons?.length?'<div class="vpMeta">Sinais principais: '+s.underwaterVisibilityPrediction.reasons.map(esc).join(' · ')+'</div>':''}
   </div>
   <div class="sectionTitle">🕒 Melhor janela calculada</div>
-  <div class="best">${esc(s.bestWindow||'Não calculado')} <span class="notice">· score técnico ajustado pelas condições das 72h anteriores</span></div>
+  <div class="best">${esc(s.bestWindow||'Sem janela favorável')} <span class="notice">· score técnico ajustado pelas condições das 72h anteriores</span></div>
   <div class="sectionTitle">🌊 Previsão dos próximos 7 dias</div>
   <div class="notice" style="margin-bottom:9px">Visão rápida por dia: score, visibilidade subaquática estimada, estado do mar, energia da ondulação e melhor janela. O modelo também considera as condições marinhas das 72 horas anteriores.</div>
-  <div class="dailyForecast">${(s.dailyForecast||[]).map((d,i)=>{const dd=new Date(d.date+'T12:00:00');const wd=dd.toLocaleDateString('pt-PT',{weekday:'long'});const label=(i===0?'Hoje':wd.charAt(0).toUpperCase()+wd.slice(1))+' · '+dd.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});const isBest=d.score===Math.max(...(s.dailyForecast||[]).map(x=>x.score??-1));return `<div class="dayCard ${isBest?'bestDay':''}"><div class="day">${esc(label)}</div><div class="dayScore">${d.score}/10 <span>score</span></div><div class="dayMeta">👁️ <b>${d.visibility!=null?d.visibility.toFixed(1)+' m':'—'}</b><br>🌊 ${d.waveAvg!=null?d.waveAvg.toFixed(1)+' m':'—'} · 💨 ${d.windAvg!=null?d.windAvg.toFixed(1)+' km/h':'—'}<br>⚡ ${d.energyKJ!=null?Math.round(d.energyKJ)+' kJ':'Energia —'}</div><div class="bestTime">⭐ Melhor janela: ${d.bestTime?.slice(11,16)||'—'} · ${d.bestScore??'—'}/10</div><span class="memoryTag">${esc(d.memoryTrend)}</span></div>`}).join('')}</div>
+  <div class="dailyForecast">${(s.dailyForecast||[]).map((d,i)=>{const dd=new Date(d.date+'T12:00:00');const wd=dd.toLocaleDateString('pt-PT',{weekday:'long'});const label=(i===0?'Hoje':wd.charAt(0).toUpperCase()+wd.slice(1))+' · '+dd.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});const isBest=d.score>=4&&d.score===Math.max(...(s.dailyForecast||[]).map(x=>x.score??-1));const dayCls=scoreClass(d.score);const hasWindow=Number(d.bestScore)>=4&&d.bestTime;return `<div class="dayCard ${isBest?'bestDay':''}"><div class="day">${esc(label)}</div><div class="dayScore ${dayCls}">${d.score}/10 <span>score</span></div><div class="dayMeta">👁️ <b>${d.visibility!=null?d.visibility.toFixed(1)+' m':'—'}</b><br>🌊 ${d.waveAvg!=null?d.waveAvg.toFixed(1)+' m':'—'} · 💨 ${d.windAvg!=null?d.windAvg.toFixed(1)+' km/h':'—'}<br>⚡ ${d.energyKJ!=null?Math.round(d.energyKJ)+' kJ':'Energia —'}</div><div class="bestTime ${hasWindow?'':'noWindow'}">${hasWindow?'⭐ Melhor janela: '+d.bestTime.slice(11,16)+' · '+d.bestScore+'/10':'🌙 Sem janela favorável'}</div><span class="memoryTag">${esc(d.memoryTrend)}</span></div>`}).join('')}</div>
   <div class="sectionTitle">👁️ Visibilidade real — observações dos pescadores</div>
   <div class="communityGrid">
     <div class="communityBox">

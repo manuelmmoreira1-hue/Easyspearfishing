@@ -378,13 +378,14 @@ function buildDailyForecast(hourly, weatherDaily){
     const avg=(arr,key)=>{const v=arr.map(x=>Number(x[key])).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
     const best=top[0]||null;
     if(!best) continue;
+    const favorableBest = best.score >= 4 ? best : null;
     const avgScore=top.length?top.reduce((a,x)=>a+x.score,0)/top.length:best.score;
     const avgVis=avg(top,'underwaterVisibility');
     const waves=avg(pool,'wave'), winds=avg(pool,'wind');
     const memoryAvg=avg(pool,'memoryPenalty');
     const energyAvg=avg(pool,'energyKJ');
     const trend=memoryAvg!=null?(memoryAvg<=0.35?'a recuperar':memoryAvg>=1.0?'mar ainda mexido':'estável'):'—';
-    out.push({date:d,score:Number(avgScore.toFixed(1)),visibility:avgVis!=null?Number(avgVis.toFixed(1)):null,bestTime:best.time,bestScore:best.score,waveAvg:waves!=null?Number(waves.toFixed(1)):null,windAvg:winds!=null?Number(winds.toFixed(1)):null,energyKJ:energyAvg!=null?Math.round(energyAvg):null,energyLabel:energyLabel(energyAvg),memoryPenalty:memoryAvg!=null?Number(memoryAvg.toFixed(2)):null,memoryTrend:trend});
+    out.push({date:d,score:Number(avgScore.toFixed(1)),visibility:avgVis!=null?Number(avgVis.toFixed(1)):null,bestTime:favorableBest?.time||null,bestScore:favorableBest?.score??null,waveAvg:waves!=null?Number(waves.toFixed(1)):null,windAvg:winds!=null?Number(winds.toFixed(1)):null,energyKJ:energyAvg!=null?Math.round(energyAvg):null,energyLabel:energyLabel(energyAvg),memoryPenalty:memoryAvg!=null?Number(memoryAvg.toFixed(2)):null,memoryTrend:trend});
   }
   return out;
 }
@@ -474,7 +475,8 @@ function buildSpot(name,marine,weather){
     const set=sunsetByDay[d]?.slice(11,16)||'21:00';
     return t>=rise && t<=set;
   });
-  const best=next24.reduce((a,b)=>!a||b.score>a.score?b:a,null);
+  const rawBest=next24.reduce((a,b)=>!a||b.score>a.score?b:a,null);
+  const best=rawBest && rawBest.score >= 4 ? rawBest : null;
   const dailyForecast=buildDailyForecast(futureHourly, weather.daily);
   const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
   const currentMem=seaMemory(nowLocal,mh,wh).penalty;
@@ -501,7 +503,7 @@ function buildSpot(name,marine,weather){
     swellPeriod:finite(mc.swell_wave_period)?`${fmt(mc.swell_wave_period)} s`:'—',
     tideLevel:finite(mc.sea_level_height_msl)?`${Number(mc.sea_level_height_msl).toFixed(2)} m MSL*`:'—',
     currentSpeed:finite(mc.ocean_current_velocity)?`${fmt(mc.ocean_current_velocity)} km/h`:'—', currentDirection:compass(mc.ocean_current_direction),
-    bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Não calculado', bestWindowTime:best?.time||null,
+    bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Sem janela favorável', bestWindowTime:best?.time||null,
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
     hourly:buildDisplayHourly(hourly, weather.daily, nowLocalDate),
