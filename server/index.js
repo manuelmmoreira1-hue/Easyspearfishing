@@ -352,21 +352,32 @@ function estimateHourlyVisibilityAt(x, memory){
   if(memory?.penalty!=null) v-=Math.min(1.35,memory.penalty*0.75);
   return Number(clamp(v,0.5,7).toFixed(1));
 }
-function buildDailyForecast(hourly){
+function buildDailyForecast(hourly, weatherDaily){
   const days={};
   hourly.filter(x=>x.time).forEach(x=>{
     const d=x.time.slice(0,10); if(!days[d]) days[d]=[]; days[d].push(x);
   });
   const keys=Object.keys(days).sort();
   const out=[];
+  const sunriseByDay={}, sunsetByDay={};
+  if(weatherDaily?.time){
+    for(let i=0;i<weatherDaily.time.length;i++){
+      const d=weatherDaily.time[i];
+      sunriseByDay[d]=weatherDaily.sunrise?.[i]||null;
+      sunsetByDay[d]=weatherDaily.sunset?.[i]||null;
+    }
+  }
   for(const d of keys.slice(0,7)){
     const day=days[d].filter(x=>x.score!=null);
     if(!day.length) continue;
-    const daylight=day.filter(x=>{const h=Number(x.time.slice(11,13));return h>=8&&h<=20;});
-    const pool=daylight.length?daylight:day;
+    const rise=sunriseByDay[d]?.slice(11,16)||'07:00';
+    const set=sunsetByDay[d]?.slice(11,16)||'21:00';
+    const daylight=day.filter(x=>{const t=x.time.slice(11,16);return t>=rise&&t<=set;});
+    const pool=daylight;
     const top=[...pool].sort((a,b)=>(b.score??-1)-(a.score??-1)).slice(0,6);
     const avg=(arr,key)=>{const v=arr.map(x=>Number(x[key])).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
-    const best=top[0]||pool[0];
+    const best=top[0]||null;
+    if(!best) continue;
     const avgScore=top.length?top.reduce((a,x)=>a+x.score,0)/top.length:best.score;
     const avgVis=avg(top,'underwaterVisibility');
     const waves=avg(pool,'wave'), winds=avg(pool,'wind');
@@ -446,11 +457,25 @@ function buildSpot(name,marine,weather){
       underwaterVisibility:estimateHourlyVisibilityAt({wave:w,period:p,wind:wi,gust:g,waveDirection:num(mh.wave_direction?.[i]),swell:num(mh.swell_wave_height?.[i]),swellPeriod:num(mh.swell_wave_period?.[i]),windDirection:num(wh.wind_direction_10m?.[i]),current:num(mh.ocean_current_velocity?.[i]),tide:num(mh.sea_level_height_msl?.[i]),rainChance:num(wh.precipitation_probability?.[i])},mem)
     });
   }
-  const today=new Date().toISOString().slice(0,10);
-  const futureHourly=hourly.filter(x=>x.time.slice(0,10)>=today);
-  const next24=futureHourly.slice(0,24).filter(x=>x.score!=null);
+  const nowLocalDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const futureHourly=hourly.filter(x=>x.time.slice(0,10)>=nowLocalDate);
+  const sunriseByDay={}, sunsetByDay={};
+  if(weather.daily?.time){
+    for(let i=0;i<weather.daily.time.length;i++){
+      const d=weather.daily.time[i];
+      sunriseByDay[d]=weather.daily.sunrise?.[i]||null;
+      sunsetByDay[d]=weather.daily.sunset?.[i]||null;
+    }
+  }
+  const next24=futureHourly.slice(0,24).filter(x=>{
+    if(x.score==null) return false;
+    const d=x.time.slice(0,10), t=x.time.slice(11,16);
+    const rise=sunriseByDay[d]?.slice(11,16)||'07:00';
+    const set=sunsetByDay[d]?.slice(11,16)||'21:00';
+    return t>=rise && t<=set;
+  });
   const best=next24.reduce((a,b)=>!a||b.score>a.score?b:a,null);
-  const dailyForecast=buildDailyForecast(futureHourly);
+  const dailyForecast=buildDailyForecast(futureHourly, weather.daily);
   const nowLocal=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Lisbon',hour12:false}).replace(' ','T');
   const currentMem=seaMemory(nowLocal,mh,wh).penalty;
   const adjustedCurrentScore=scoreWithMemory(baseScore,{penalty:currentMem||0});
@@ -479,7 +504,7 @@ function buildSpot(name,marine,weather){
     bestWindow:best?`${best.time.slice(11,16)} — ${best.score}/10`:'Não calculado', bestWindowTime:best?.time||null,
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
-    hourly:buildDisplayHourly(hourly, weather.daily, today),
+    hourly:buildDisplayHourly(hourly, weather.daily, nowLocalDate),
     note:'A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período; o limiar de ~200 kJ é usado como referência operacional para pesca submarina. Não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }
