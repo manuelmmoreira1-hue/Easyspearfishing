@@ -33,3 +33,8 @@ Esta versão recupera e amplia o trabalho anterior:
 O servidor grava os relatos em `data/observations.json`. Em Render Free, o filesystem do serviço não é uma base de dados persistente: os relatos podem desaparecer depois de um novo deploy/restart. Para transformar a área de observações numa comunidade permanente, a próxima etapa deve ligar esta API a uma base de dados persistente (por exemplo Postgres/Supabase) através de variáveis de ambiente.
 
 Não usar os valores do modelo como medição direta de visibilidade subaquática.
+
+
+## V2.1 — Previsão de visibilidade subaquática
+
+A versão 2.1 acrescenta uma estimativa de visibilidade subaquática derivada das condições disponíveis: onda, período, swell, vento e direção, rajadas, tendência recente da ondulação, chuva recente, corrente, maré e exposição relativa do spot. As observações reais recentes da comunidade podem calibrar a estimativa. A app apresenta também intervalo provável e confiança e mantém a distinção entre estimativa e observação real.
