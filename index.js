@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.17-persistente';
+const VERSION = '2.19-persistente';
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SECRET_KEY);
@@ -608,9 +608,12 @@ async function buildSpot(name,marine,weather){
 
 async function supabaseRequest(pathname, options={}){
   if(!USE_SUPABASE) throw new Error('Supabase não configurado');
+  // Supabase's new sb_secret_* keys are opaque API keys, not JWTs.
+  // They must be sent in `apikey`; sending them as Bearer can cause
+  // Invalid JWT errors and makes observation writes look successful
+  // only until the next refresh.
   const headers={
     apikey:SUPABASE_SECRET_KEY,
-    Authorization:`Bearer ${SUPABASE_SECRET_KEY}`,
     'Content-Type':'application/json',
     ...(options.headers||{})
   };
@@ -724,8 +727,10 @@ app.post('/api/observations',async(req,res)=>{
     const note=String(body.note||'').trim().slice(0,500); const author=String(body.author||'Anónimo').trim().slice(0,40)||'Anónimo';
     const item={id:crypto.randomUUID(),spot,visibility,conditions,clarity,fishActivity,note,author,createdAt:new Date().toISOString()};
     await insertObservation(item);
-    res.status(201).json({ok:true,observation:item,summary:await obsSummary(spot),persistent:USE_SUPABASE});
-  }catch(e){ console.error(e); res.status(500).json({error:'Não foi possível guardar a observação. '+e.message}); }
+    let summary=null;
+    try{ summary=await obsSummary(spot); }catch(e){ console.error('Resumo após gravação:',e.message); }
+    res.status(201).json({ok:true,observation:item,summary,persistent:USE_SUPABASE,message:USE_SUPABASE?'Observação guardada no Supabase.':'Observação guardada apenas localmente.'});
+  }catch(e){ console.error(e); res.status(500).json({error:'Não foi possível guardar a observação. '+e.message,persistent:USE_SUPABASE}); }
 });
 
 app.post('/api/visit',async(req,res)=>{ try{ await registerVisit(req.body?.visitorId); res.json({ok:true}); }catch(e){res.status(500).json({error:e.message});} });
