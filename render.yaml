@@ -2,5 +2,6 @@ services:
   - type: web
     name: Easyspearfishing
     env: node
+    plan: free
     buildCommand: npm install
     startCommand: npm start

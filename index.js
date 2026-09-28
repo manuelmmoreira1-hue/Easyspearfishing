@@ -5,7 +5,10 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const VERSION = '2.16-hora-a-hora';
+const VERSION = '2.17-persistente';
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '');
+const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SECRET_KEY);
 
 app.use(express.json({limit:'32kb'}));
 app.use((req,res,next)=>{
@@ -87,6 +90,11 @@ function windCleaningBonus(wind, windDirection){
   if(d>220 && d<330) return -0.35;
   if(d>=330 || d<=20) return -0.15;
   return 0;
+}
+function operationalWavePeriod(meanPeriod, peakPeriod){
+  // Para pesca/segurança usamos o período de pico (Tp): representa a parte
+  // mais energética do espectro. Recorre ao período médio apenas se Tp faltar.
+  return finite(peakPeriod) ? Number(peakPeriod) : Number(meanPeriod);
 }
 function componentScore(value, points){
   if(!finite(value)) return null;
@@ -185,13 +193,13 @@ async function getAllSpots(force=false){
   const lats=names.map(n=>SPOTS[n][0]).join(',');
   const lons=names.map(n=>SPOTS[n][1]).join(',');
 
-  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=3&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
+  const marineUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&current=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=3&forecast_days=8&timezone=Europe%2FLisbon&cell_selection=sea`;
   const weatherUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation&past_days=3&forecast_days=8&timezone=Europe%2FLisbon`;
 
   const [mr,wr]=await Promise.all([fetchJson(marineUrl),fetchJson(weatherUrl)]);
   const ma=Array.isArray(mr)?mr:[mr], wa=Array.isArray(wr)?wr:[wr];
 
-  const spots=names.map((name,i)=>buildSpot(name,ma[i]||{},wa[i]||{}));
+  const spots=await Promise.all(names.map((name,i)=>buildSpot(name,ma[i]||{},wa[i]||{})));
   cache={at:Date.now(),data:{updatedAt:new Date().toISOString(),version:VERSION,spots}};
   return cache.data;
 }
@@ -255,11 +263,11 @@ function trend(arr,times,hours=12){
   if(!recent.length||!older.length) return null;
   return recent.reduce((a,b)=>a+b,0)/recent.length - older.reduce((a,b)=>a+b,0)/older.length;
 }
-function estimateUnderwaterVisibility(name,marine,weather){
+async function estimateUnderwaterVisibility(name,marine,weather){
   const mh=marine.hourly||{}, wh=weather.hourly||{};
   const mt=mh.time||[], wt=wh.time||[];
   const now=Date.now();
-  const currentWave=num(marine.current?.wave_height), currentPeriod=num(marine.current?.wave_period);
+  const currentWave=num(marine.current?.wave_height), currentPeriod=operationalWavePeriod(num(marine.current?.wave_period),num(marine.current?.wave_peak_period));
   const swell=num(marine.current?.swell_wave_height), swellPeriod=num(marine.current?.swell_wave_period);
   const wind=num(weather.current?.wind_speed_10m), windDir=num(weather.current?.wind_direction_10m);
   const gust=num(weather.current?.wind_gusts_10m);
@@ -330,7 +338,7 @@ function estimateUnderwaterVisibility(name,marine,weather){
   const protection=(1-exposure)*0.9; v+=protection; factors.protection=Number(protection.toFixed(2));
 
   // Calibrate with recent real observations from this spot when available.
-  const obs=obsSummary(name);
+  const obs=await obsSummary(name);
   let observationWeight=0;
   if(obs.visibilityAvg!=null&&obs.count){
     const latestAge=obs.latest?.createdAt?(Date.now()-Date.parse(obs.latest.createdAt))/86400000:99;
@@ -502,9 +510,9 @@ function buildDisplayHourly(hourly, daily, today){
   }
   return out.slice(0,7*6);
 }
-function buildSpot(name,marine,weather){
+async function buildSpot(name,marine,weather){
   const mc=marine.current||{}, wc=weather.current||{};
-  const wave=num(mc.wave_height), period=num(mc.wave_period), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
+  const wave=num(mc.wave_height), period=operationalWavePeriod(num(mc.wave_period),num(mc.wave_peak_period)), wind=num(wc.wind_speed_10m), gust=num(wc.wind_gusts_10m);
   const baseScore=maritimeScore(wave,period,wind,gust,num(wc.wind_direction_10m));
 
   const e=energy(wave,period);
@@ -514,7 +522,7 @@ function buildSpot(name,marine,weather){
   const hourly=[];
   for(let i=0;i<n;i++){
     const time=mh.time[i];
-    const w=num(mh.wave_height?.[i]), p=num(mh.wave_period?.[i]), wi=num(wh.wind_speed_10m?.[i]), g=num(wh.wind_gusts_10m?.[i]);
+    const w=num(mh.wave_height?.[i]), p=operationalWavePeriod(num(mh.wave_period?.[i]),num(mh.wave_peak_period?.[i])), wi=num(wh.wind_speed_10m?.[i]), g=num(wh.wind_gusts_10m?.[i]);
     const mem=seaMemory(time,mh,wh);
     const windDir=num(wh.wind_direction_10m?.[i]);
     const base=maritimeScore(w,p,wi,g,windDir);
@@ -566,7 +574,7 @@ function buildSpot(name,marine,weather){
   // The main score must follow the current forecast hour, not the daily average.
   const liveScore=currentHour?.score ?? scoreWithMemory(baseScore,{penalty:currentMem||0});
   const [emoji,status]=classify(liveScore);
-  const underwaterVisibility=estimateUnderwaterVisibility(name,marine,weather);
+  const underwaterVisibility=await estimateUnderwaterVisibility(name,marine,weather);
   if(underwaterVisibility.available && currentMem!=null){
     underwaterVisibility.estimatedMeters=Number(clamp(underwaterVisibility.estimatedMeters-currentMem*0.45,0.5,7).toFixed(1));
     underwaterVisibility.range=[Number(clamp(underwaterVisibility.range[0]-currentMem*0.3,0.3,6.5).toFixed(1)),Number(clamp(underwaterVisibility.range[1]-currentMem*0.15,1.0,8.0).toFixed(1))];
@@ -579,8 +587,8 @@ function buildSpot(name,marine,weather){
 
   return {
     name,lat:SPOTS[name][0],lon:SPOTS[name][1],score:adjustedCurrentScore,baseScore,status:finalClass[1],statusEmoji:finalClass[0],
-    currentHour: currentHour ? {time:currentHour.time,score:currentHour.score,baseScore:currentHour.baseScore,underwaterVisibility:currentHour.underwaterVisibility,energyKJ:currentHour.energyKJ,wave:currentHour.wave,period:currentHour.period,wind:currentHour.wind,windDirection:currentHour.windDirection,gust:currentHour.gust,swell:currentHour.swell,swellPeriod:currentHour.swellPeriod,memoryPenalty:currentHour.memoryPenalty} : null,
-    wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', direction:compass(mc.wave_direction),
+    currentHour: currentHour ? {time:currentHour.time,score:currentHour.score,baseScore:currentHour.baseScore,underwaterVisibility:currentHour.underwaterVisibility,energyKJ:currentHour.energyKJ,wave:currentHour.wave,period:currentHour.period,peakPeriod:currentHour.peakPeriod,wind:currentHour.wind,windDirection:currentHour.windDirection,gust:currentHour.gust,swell:currentHour.swell,swellPeriod:currentHour.swellPeriod,memoryPenalty:currentHour.memoryPenalty} : null,
+    wave:wave!=null?`${fmt(wave)} m`:'—', period:period!=null?`${fmt(period)} s`:'—', peakPeriod:finite(mc.wave_peak_period)?`${fmt(mc.wave_peak_period)} s`:'—', direction:compass(mc.wave_direction),
     waterTemp:finite(mc.sea_surface_temperature)?`${fmt(mc.sea_surface_temperature)} °C`:'—',
     wind:wind!=null?`${fmt(wind)} km/h ${compass(wc.wind_direction_10m)}`:'—', gust:gust!=null?`${fmt(gust)} km/h`:'—',
     energy:e!=null?`${Math.round(e)} kJ · ${energyLabel(e)}`:'—', atmosphericVisibility:finite(wc.visibility)?`${(Number(wc.visibility)/1000).toFixed(1)} km`:'—',
@@ -594,35 +602,88 @@ function buildSpot(name,marine,weather){
     dailyForecast, dailyBest, forecastDays:dailyForecast.length,
     historyModel:{hours:72,description:'O score e a visibilidade futura incluem um ajuste de memória das condições marinhas das 72 horas anteriores a cada hora prevista. O efeito diminui quando o mar recupera.',currentPenalty:Number((currentMem||0).toFixed(2))},
     hourly:buildDisplayHourly(hourly, weather.daily, nowLocalDate),
-    note:'O índice de pesca submarina usa como referências operacionais período <=10 s, ondulação <1 m, rajadas <10 km/h e energia <=200 kJ como zona favorável; vento de leste pode dar um pequeno bónus de limpeza, mas não é tratado como garantia. A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período e não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
+    note:'O índice de pesca submarina usa como período operacional o período de pico (Tp), por representar as ondas mais energéticas; usa como referências operacionais período <=10 s, ondulação <1 m, rajadas <10 km/h e energia <=200 kJ como zona favorável; vento de leste pode dar um pequeno bónus de limpeza, mas não é tratado como garantia. A energia da ondulação é uma estimativa calibrada em kJ, baseada em altura² × período e não é uma leitura direta do Windguru. A visibilidade subaquática e o ajuste de memória são estimativas heurísticas, não medições. A previsão usa condições atuais e previstas de onda, período, swell, vento, rajadas, chuva, corrente e maré, e considera as 72 horas anteriores para representar o efeito residual da agitação. Observações reais recentes podem calibrar a visibilidade.'
   };
 }
 
-function readObs(){
+async function supabaseRequest(pathname, options={}){
+  if(!USE_SUPABASE) throw new Error('Supabase não configurado');
+  const headers={
+    apikey:SUPABASE_SECRET_KEY,
+    Authorization:`Bearer ${SUPABASE_SECRET_KEY}`,
+    'Content-Type':'application/json',
+    ...(options.headers||{})
+  };
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`,{...options,headers});
+  const text=await r.text();
+  let data=null; try{ data=text?JSON.parse(text):null; }catch{ data=text; }
+  if(!r.ok) throw new Error(`Supabase ${r.status}: ${typeof data==='string'?data:(data?.message||data?.error||JSON.stringify(data))}`);
+  return data;
+}
+
+function readObsLocal(){
   try{
     const raw=fs.readFileSync(OBS_FILE,'utf8');
     const x=JSON.parse(raw);
     return Array.isArray(x)?x:[];
   }catch(e){ return []; }
 }
-function writeObs(list){
-  fs.writeFileSync(OBS_FILE,JSON.stringify(list,null,2),'utf8');
+function writeObsLocal(list){ fs.writeFileSync(OBS_FILE,JSON.stringify(list,null,2),'utf8'); }
+
+async function readObs(){
+  if(USE_SUPABASE){
+    const rows=await supabaseRequest('observations?select=id,spot,visibility,conditions,clarity,fish_activity,note,author,created_at&order=created_at.desc&limit=1000');
+    return (rows||[]).map(o=>({id:o.id,spot:o.spot,visibility:Number(o.visibility),conditions:Number(o.conditions),clarity:Number(o.clarity),fishActivity:Number(o.fish_activity),note:o.note||'',author:o.author||'Anónimo',createdAt:o.created_at}));
+  }
+  return readObsLocal();
 }
-function obsSummary(spot){
-  const list=readObs().filter(o=>o.spot===spot).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  const avg=(key)=>{
-    const vals=list.map(o=>Number(o[key])).filter(Number.isFinite);
-    return vals.length?Number((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)):null;
-  };
-  return {
-    count:list.length,
-    visibilityAvg:avg('visibility'),
-    conditionsAvg:avg('conditions'),
-    clarityAvg:avg('clarity'),
-    fishActivityAvg:avg('fishActivity'),
-    latest:list[0]||null,
-    recent:list.slice(0,10)
-  };
+
+async function insertObservation(item){
+  if(USE_SUPABASE){
+    await supabaseRequest('observations',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({id:item.id,spot:item.spot,visibility:item.visibility,conditions:item.conditions,clarity:item.clarity,fish_activity:item.fishActivity,note:item.note,author:item.author,created_at:item.createdAt})});
+    return;
+  }
+  const list=readObsLocal(); list.push(item); writeObsLocal(list.slice(-1000));
+}
+
+async function obsSummary(spot){
+  const list=(await readObs()).filter(o=>o.spot===spot).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const avg=(key)=>{ const vals=list.map(o=>Number(o[key])).filter(Number.isFinite); return vals.length?Number((vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)):null; };
+  return {count:list.length,visibilityAvg:avg('visibility'),conditionsAvg:avg('conditions'),clarityAvg:avg('clarity'),fishActivityAvg:avg('fishActivity'),latest:list[0]||null,recent:list.slice(0,10)};
+}
+
+async function localToSupabase(){
+  if(!USE_SUPABASE) return;
+  const local=readObsLocal();
+  if(!local.length) return;
+  try{
+    const rows=local.map(o=>({id:o.id,spot:o.spot,visibility:o.visibility,conditions:o.conditions,clarity:o.clarity,fish_activity:o.fishActivity,note:o.note||'',author:o.author||'Anónimo',created_at:o.createdAt}));
+    await supabaseRequest('observations?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
+    console.log(`Supabase: ${rows.length} observações locais sincronizadas.`);
+  }catch(e){ console.error('Supabase migration:',e.message); }
+}
+
+async function siteStats(){
+  if(USE_SUPABASE){
+    const rows=await supabaseRequest('rpc/easyspearfishing_stats',{method:'POST',body:'{}'});
+    return rows||{};
+  }
+  const visitsFile=path.join(DATA_DIR,'visits.json');
+  let visits=[]; try{visits=JSON.parse(fs.readFileSync(visitsFile,'utf8'));if(!Array.isArray(visits))visits=[];}catch{}
+  const today=new Date().toISOString().slice(0,10);
+  return {totalVisits:visits.length,todayVisits:visits.filter(v=>String(v.createdAt).slice(0,10)===today).length,uniqueVisitors:new Set(visits.map(v=>v.visitorId)).size,observations:readObsLocal().length,spotsObserved:new Set(readObsLocal().map(o=>o.spot)).size,lastObservation:readObsLocal().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0]?.createdAt||null};
+}
+
+async function registerVisit(visitorId){
+  const id=String(visitorId||'').trim().slice(0,100);
+  if(!id) return;
+  if(USE_SUPABASE){
+    await supabaseRequest('site_visits',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({visitor_id:id})});
+    return;
+  }
+  const visitsFile=path.join(DATA_DIR,'visits.json'); let list=[];
+  try{list=JSON.parse(fs.readFileSync(visitsFile,'utf8'));if(!Array.isArray(list))list=[];}catch{}
+  list.push({visitorId:id,createdAt:new Date().toISOString()}); fs.writeFileSync(visitsFile,JSON.stringify(list.slice(-10000)),'utf8');
 }
 
 app.get('/api/health',(req,res)=>res.json({ok:true,service:'Easyspearfishing',version:VERSION,cached:Boolean(cache.data),spots:Object.keys(SPOTS).length}));
@@ -631,7 +692,7 @@ app.get('/api/spots',async(req,res)=>{
   try{
     const force=req.query.force==='1';
     const data=await getAllSpots(force);
-    const withCommunity=data.spots.map(s=>({...s,community:obsSummary(s.name)}));
+    const withCommunity=await Promise.all(data.spots.map(async s=>({...s,community:await obsSummary(s.name)})));
     res.json({...data,spots:withCommunity});
   }catch(e){
     console.error(e);
@@ -645,45 +706,31 @@ app.get('/api/spot',async(req,res)=>{
     if(!SPOTS[name]) return res.status(404).json({error:'Spot não encontrado'});
     const data=await getAllSpots(false);
     const spot=data.spots.find(s=>s.name===name);
-    res.json({...spot,community:obsSummary(name)});
+    res.json({...spot,community:await obsSummary(name)});
   }catch(e){res.status(502).json({error:e.message});}
 });
 
-app.get('/api/observations',(req,res)=>{
-  const spot=req.query.spot;
-  if(!spot) return res.json({observations:readObs()});
-  res.json(obsSummary(spot));
+app.get('/api/observations',async(req,res)=>{
+  try{ const spot=req.query.spot; if(!spot) return res.json({observations:await readObs()}); res.json(await obsSummary(spot)); }catch(e){res.status(500).json({error:e.message});}
 });
 
-app.post('/api/observations',(req,res)=>{
-  const body=req.body||{};
-  const spot=String(body.spot||'').trim();
-  if(!SPOTS[spot]) return res.status(400).json({error:'Spot inválido'});
-  const visibility=num(body.visibility);
-  const conditions=num(body.conditions);
-  const clarity=num(body.clarity);
-  const fishActivity=num(body.fishActivity);
-  if(visibility==null || visibility<0 || visibility>30) return res.status(400).json({error:'Visibilidade inválida (0–30 m)'});
-  if(![conditions,clarity,fishActivity].every(v=>v!=null&&v>=1&&v<=5)) return res.status(400).json({error:'Avaliações devem estar entre 1 e 5'});
-  const note=String(body.note||'').trim().slice(0,500);
-  const author=String(body.author||'Anónimo').trim().slice(0,40)||'Anónimo';
-  const now=new Date().toISOString();
-  const list=readObs();
-  const item={id:crypto.randomUUID(),spot,visibility,conditions,clarity,fishActivity,note,author,createdAt:now};
-  list.push(item);
-  writeObs(list.slice(-1000));
-  res.status(201).json({ok:true,observation:item,summary:obsSummary(spot)});
+app.post('/api/observations',async(req,res)=>{
+  try{
+    const body=req.body||{}; const spot=String(body.spot||'').trim();
+    if(!SPOTS[spot]) return res.status(400).json({error:'Spot inválido'});
+    const visibility=num(body.visibility), conditions=num(body.conditions), clarity=num(body.clarity), fishActivity=num(body.fishActivity);
+    if(visibility==null || visibility<0 || visibility>30) return res.status(400).json({error:'Visibilidade inválida (0–30 m)'});
+    if(![conditions,clarity,fishActivity].every(v=>v!=null&&v>=1&&v<=5)) return res.status(400).json({error:'Avaliações devem estar entre 1 e 5'});
+    const note=String(body.note||'').trim().slice(0,500); const author=String(body.author||'Anónimo').trim().slice(0,40)||'Anónimo';
+    const item={id:crypto.randomUUID(),spot,visibility,conditions,clarity,fishActivity,note,author,createdAt:new Date().toISOString()};
+    await insertObservation(item);
+    res.status(201).json({ok:true,observation:item,summary:await obsSummary(spot),persistent:USE_SUPABASE});
+  }catch(e){ console.error(e); res.status(500).json({error:'Não foi possível guardar a observação. '+e.message}); }
 });
 
-app.get('/api/data-info',(req,res)=>res.json({observationsFile:'data/observations.json',count:readObs().length}));
-
-// Anonymous aggregate visit counter: no IPs or personal identifiers are stored.
-const STATS_FILE = path.join(DATA_DIR,'stats.json');
-if(!fs.existsSync(STATS_FILE)) fs.writeFileSync(STATS_FILE, JSON.stringify({total:0,days:{}},null,2),'utf8');
-function readStats(){ try{return JSON.parse(fs.readFileSync(STATS_FILE,'utf8'));}catch{return {total:0,days:{}};} }
-function writeStats(x){ fs.writeFileSync(STATS_FILE, JSON.stringify(x,null,2),'utf8'); }
-app.post('/api/visit',(req,res)=>{ const x=readStats(); const day=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Lisbon'}); x.total=(x.total||0)+1; x.days=x.days||{}; x.days[day]=(x.days[day]||0)+1; writeStats(x); res.json({ok:true}); });
-app.get('/api/stats',(req,res)=>{ const x=readStats(); const day=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Lisbon'}); res.json({totalVisits:x.total||0,todayVisits:(x.days&&x.days[day])||0,updatedAt:new Date().toISOString()}); });
+app.post('/api/visit',async(req,res)=>{ try{ await registerVisit(req.body?.visitorId); res.json({ok:true}); }catch(e){res.status(500).json({error:e.message});} });
+app.get('/api/stats',async(req,res)=>{ try{ res.json({...await siteStats(),persistent:USE_SUPABASE}); }catch(e){res.status(500).json({error:e.message});} });
+app.get('/api/data-info',async(req,res)=>res.json({storage:USE_SUPABASE?'Supabase':'local',count:(await readObs()).length}));
 
 app.use(express.static(PUBLIC_DIR,{etag:false,lastModified:false,setHeaders:(res)=>res.setHeader('Cache-Control','no-store')}));
 app.use((req,res)=>{
@@ -691,4 +738,4 @@ app.use((req,res)=>{
   res.sendFile(path.join(PUBLIC_DIR,'index.html'));
 });
 
-app.listen(PORT,'0.0.0.0',()=>console.log(`Easyspearfishing ${VERSION} on ${PORT}`));
+app.listen(PORT,'0.0.0.0',()=>{ console.log(`Easyspearfishing ${VERSION} on ${PORT} · armazenamento ${USE_SUPABASE?'Supabase':'local'}`); localToSupabase(); });
