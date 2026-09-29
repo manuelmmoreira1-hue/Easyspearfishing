@@ -1,14 +1,50 @@
-// Easyspearfishing — proteção de acesso às APIs Open-Meteo
-// Correção: cache, deduplicação, retry de 429/5xx e fallback para dados
-// válidos recentes. Não altera o motor de score nem o frontend.
+// Easyspearfishing — proteção robusta de acesso às APIs Open-Meteo
+// Cache persistente + deduplicação + retry controlado + fallback.
+// Não altera o motor de score nem o frontend.
 
 const originalFetch = global.fetch.bind(global);
 const apiCache = new Map();
 const inFlight = new Map();
 
-const FRESH_MS = 12 * 60 * 1000;       // 12 min
-const STALE_MS = 2 * 60 * 60 * 1000;   // 2 h
-const MAX_RETRIES = 2;
+const FRESH_MS = 30 * 60 * 1000;       // 30 min entre pedidos reais ao fornecedor
+const STALE_MS = 24 * 60 * 60 * 1000;  // 24 h de fallback se o fornecedor falhar
+const MAX_RETRIES = 1;
+const RETRY_CAP_MS = 60000;
+
+const fs = require('fs');
+const path = require('path');
+const CACHE_FILE = path.join(process.cwd(), 'data', 'open-meteo-cache.json');
+
+function loadPersistentCache() {
+  try {
+    const raw = fs.readFileSync(CACHE_FILE, 'utf8');
+    const saved = JSON.parse(raw);
+    if (saved && typeof saved === 'object') {
+      for (const [key, entry] of Object.entries(saved)) {
+        if (entry && typeof entry.body === 'string' && Number.isFinite(entry.savedAt)) {
+          apiCache.set(key, entry);
+        }
+      }
+      console.log(`Open-Meteo: ${apiCache.size} entradas carregadas do cache persistente.`);
+    }
+  } catch {}
+}
+
+function persistCache() {
+  try {
+    const dir = path.dirname(CACHE_FILE);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      CACHE_FILE,
+      JSON.stringify(Object.fromEntries(apiCache.entries())),
+      'utf8'
+    );
+  } catch (err) {
+    console.warn('Open-Meteo: não foi possível persistir cache:', err.message);
+  }
+}
+
+loadPersistentCache();
 
 function isOpenMeteo(url) {
   try {
@@ -36,7 +72,6 @@ function responseFrom(entry) {
 async function protectedFetch(url, options = {}) {
   const method = String(options.method || 'GET').toUpperCase();
 
-  // Só protege GETs da Open-Meteo. Supabase e restantes pedidos ficam iguais.
   if (method !== 'GET' || !isOpenMeteo(url)) {
     return originalFetch(url, options);
   }
@@ -45,12 +80,12 @@ async function protectedFetch(url, options = {}) {
   const now = Date.now();
   const cached = apiCache.get(key);
 
-  // Dados recentes: não fazemos novo pedido.
+  // Nunca fazemos pedidos repetidos desnecessários.
   if (cached && now - cached.savedAt < FRESH_MS) {
     return responseFrom(cached);
   }
 
-  // Se já houver outro pedido exatamente igual em andamento, reutiliza-o.
+  // Se já houver exatamente o mesmo pedido em curso, partilha o resultado.
   if (inFlight.has(key)) {
     const entry = await inFlight.get(key);
     return responseFrom(entry);
@@ -72,12 +107,11 @@ async function protectedFetch(url, options = {}) {
             savedAt: Date.now()
           };
           apiCache.set(key, entry);
+          persistCache();
           return entry;
         }
 
         lastError = new Error(`HTTP ${response.status}`);
-
-        // 429 = rate limit; 5xx = falha temporária do fornecedor.
         const retryable = response.status === 429 || response.status >= 500;
 
         if (!retryable) {
@@ -89,12 +123,12 @@ async function protectedFetch(url, options = {}) {
           };
         }
 
+        // Em 429 não fazemos vários pedidos seguidos: isso só agrava o rate limit.
         if (attempt < MAX_RETRIES) {
           const retryAfter = Number(response.headers.get('retry-after'));
-          const fallbackWait = [2500, 6000][attempt] || 6000;
           const delay = Number.isFinite(retryAfter) && retryAfter >= 0
-            ? Math.min(15000, retryAfter * 1000)
-            : fallbackWait;
+            ? Math.min(RETRY_CAP_MS, retryAfter * 1000)
+            : 15000;
 
           console.warn(
             `Open-Meteo ${response.status}; nova tentativa em ${delay} ms.`
@@ -105,19 +139,15 @@ async function protectedFetch(url, options = {}) {
         lastError = err;
 
         if (attempt < MAX_RETRIES) {
-          const delay = [2500, 6000][attempt] || 6000;
-          console.warn(
-            `Open-Meteo erro; nova tentativa em ${delay} ms: ${err.message}`
-          );
-          await wait(delay);
+          await wait(5000);
         }
       }
     }
 
-    // Se a API falhar depois de já termos dados bons, NÃO derrubamos o site.
+    // Se já houver dados válidos recentes, o site continua a funcionar.
     if (cached && Date.now() - cached.savedAt < STALE_MS) {
       console.warn(
-        'Open-Meteo indisponível; a servir os últimos dados válidos em cache.'
+        'Open-Meteo indisponível; a servir os últimos dados válidos do cache.'
       );
       return cached;
     }
@@ -139,5 +169,5 @@ global.fetch = protectedFetch;
 
 console.log(
   'Easyspearfishing: proteção Open-Meteo ativa ' +
-  '(cache + deduplicação + retry + fallback).'
+  '(cache persistente + deduplicação + retry controlado + fallback 24h).'
 );
