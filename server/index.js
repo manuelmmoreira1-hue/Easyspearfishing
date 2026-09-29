@@ -92,9 +92,12 @@ function windCleaningBonus(wind, windDirection){
   return 0;
 }
 function operationalWavePeriod(meanPeriod, peakPeriod){
-  // Para pesca/segurança usamos o período de pico (Tp): representa a parte
-  // mais energética do espectro. Recorre ao período médio apenas se Tp faltar.
-  return finite(peakPeriod) ? Number(peakPeriod) : Number(meanPeriod);
+  const tp=Number(peakPeriod);
+  const mean=Number(meanPeriod);
+  if(Number.isFinite(tp) && tp>0) return tp;
+  if(Number.isFinite(mean) && mean>0) return mean;
+  return null;
+}
 }
 function componentScore(value, points){
   if(!finite(value)) return null;
