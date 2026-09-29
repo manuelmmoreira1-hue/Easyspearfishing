@@ -1,19 +1,19 @@
-// Easyspearfishing — proteção robusta de acesso às APIs Open-Meteo
-// Cache persistente + deduplicação + retry controlado + fallback.
-// Não altera o motor de score nem o frontend.
-
+// Easyspearfishing — proteção Open-Meteo + fallback GitHub
 const originalFetch = global.fetch.bind(global);
 const apiCache = new Map();
 const inFlight = new Map();
 
-const FRESH_MS = 30 * 60 * 1000;       // 30 min entre pedidos reais ao fornecedor
-const STALE_MS = 24 * 60 * 60 * 1000;  // 24 h de fallback se o fornecedor falhar
+const FRESH_MS = 30 * 60 * 1000;
+const STALE_MS = 24 * 60 * 60 * 1000;
 const MAX_RETRIES = 1;
 const RETRY_CAP_MS = 60000;
 
 const fs = require('fs');
 const path = require('path');
 const CACHE_FILE = path.join(process.cwd(), 'data', 'open-meteo-cache.json');
+
+const GITHUB_CACHE_BASE =
+  'https://raw.githubusercontent.com/manuelmmoreira1-hue/Easyspearfishing/forecast-cache/data';
 
 function loadPersistentCache() {
   try {
@@ -69,6 +69,42 @@ function responseFrom(entry) {
   });
 }
 
+async function githubFallback(url) {
+  const host = new URL(url).hostname;
+  const file = host === 'marine-api.open-meteo.com' ? 'marine.json' : 'weather.json';
+  const fallbackUrl = `${GITHUB_CACHE_BASE}/${file}`;
+
+  try {
+    const r = await originalFetch(fallbackUrl, {
+      headers: { 'User-Agent': 'Easyspearfishing-cache/1.0' }
+    });
+
+    if (!r.ok) throw new Error(`GitHub cache HTTP ${r.status}`);
+
+    const body = await r.text();
+    JSON.parse(body);
+
+    const entry = {
+      body,
+      status: 200,
+      contentType: 'application/json',
+      savedAt: Date.now(),
+      source: 'github-cache'
+    };
+
+    // Guarda também por URL original, para que os próximos pedidos
+    // possam ser servidos imediatamente.
+    apiCache.set(url, entry);
+    persistCache();
+
+    console.warn(`Open-Meteo indisponível; a usar cache GitHub: ${file}`);
+    return entry;
+  } catch (err) {
+    console.warn('Cache GitHub indisponível:', err.message);
+    return null;
+  }
+}
+
 async function protectedFetch(url, options = {}) {
   const method = String(options.method || 'GET').toUpperCase();
 
@@ -80,12 +116,10 @@ async function protectedFetch(url, options = {}) {
   const now = Date.now();
   const cached = apiCache.get(key);
 
-  // Nunca fazemos pedidos repetidos desnecessários.
   if (cached && now - cached.savedAt < FRESH_MS) {
     return responseFrom(cached);
   }
 
-  // Se já houver exatamente o mesmo pedido em curso, partilha o resultado.
   if (inFlight.has(key)) {
     const entry = await inFlight.get(key);
     return responseFrom(entry);
@@ -115,42 +149,31 @@ async function protectedFetch(url, options = {}) {
         const retryable = response.status === 429 || response.status >= 500;
 
         if (!retryable) {
-          return {
-            body: JSON.stringify({ error: lastError.message }),
-            status: response.status,
-            contentType: 'application/json',
-            savedAt: Date.now()
-          };
+          break;
         }
 
-        // Em 429 não fazemos vários pedidos seguidos: isso só agrava o rate limit.
         if (attempt < MAX_RETRIES) {
           const retryAfter = Number(response.headers.get('retry-after'));
           const delay = Number.isFinite(retryAfter) && retryAfter >= 0
             ? Math.min(RETRY_CAP_MS, retryAfter * 1000)
             : 15000;
-
-          console.warn(
-            `Open-Meteo ${response.status}; nova tentativa em ${delay} ms.`
-          );
           await wait(delay);
         }
       } catch (err) {
         lastError = err;
-
-        if (attempt < MAX_RETRIES) {
-          await wait(5000);
-        }
+        if (attempt < MAX_RETRIES) await wait(5000);
       }
     }
 
-    // Se já houver dados válidos recentes, o site continua a funcionar.
+    // PRIMEIRO fallback: cache local anterior.
     if (cached && Date.now() - cached.savedAt < STALE_MS) {
-      console.warn(
-        'Open-Meteo indisponível; a servir os últimos dados válidos do cache.'
-      );
+      console.warn('Open-Meteo indisponível; a servir cache local.');
       return cached;
     }
+
+    // SEGUNDO fallback: cache atualizado pelo GitHub Actions.
+    const githubEntry = await githubFallback(url);
+    if (githubEntry) return githubEntry;
 
     throw lastError || new Error('Open-Meteo indisponível');
   })();
@@ -169,5 +192,5 @@ global.fetch = protectedFetch;
 
 console.log(
   'Easyspearfishing: proteção Open-Meteo ativa ' +
-  '(cache persistente + deduplicação + retry controlado + fallback 24h).'
+  '(cache local + GitHub fallback + retry + deduplicação).'
 );
