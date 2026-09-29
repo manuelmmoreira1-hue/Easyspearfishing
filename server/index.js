@@ -98,7 +98,6 @@ function operationalWavePeriod(meanPeriod, peakPeriod){
   if(Number.isFinite(mean) && mean>0) return mean;
   return null;
 }
-}
 function componentScore(value, points){
   if(!finite(value)) return null;
   for(const [limit,score] of points){ if(value<=limit) return score; }
