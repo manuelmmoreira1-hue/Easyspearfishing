@@ -1,0 +1,87 @@
+name: Atualizar cache das previsões
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,37 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Obter previsões Open-Meteo
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/cache
+
+          LAT="41.148,41.169,41.182,41.190,41.235,41.225,41.265,41.280,41.316,41.337,41.353,41.381"
+          LON="-8.675,-8.689,-8.705,-8.704,-8.724,-8.716,-8.722,-8.716,-8.724,-8.741,-8.744,-8.765"
+
+          MARINE_URL="https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,sea_level_height_msl,ocean_current_velocity,ocean_current_direction&past_days=3&forecast_days=8&timezone=Europe/Lisbon"
+
+          WEATHER_URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,precipitation_probability,precipitation,rain,cloud_cover&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility&past_days=3&forecast_days=8&timezone=Europe/Lisbon"
+
+          fetch_with_retry() {
+            url="$1"
+            out="$2"
+
+            for i in 1 2 3; do
+              code="$(curl -L --connect-timeout 15 --max-time 90 -sS -o "$out.tmp" -w "%{http_code}" "$url" || true)"
+              if [ "$code" = "200" ] && python - "$out.tmp" <<'PY'
+import json,sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    json.load(f)
+PY
+              then
+                mv "$out.tmp" "$out"
+                return 0
+              fi
+              rm -f "$out.tmp"
+              sleep $((i * 10))
+            done
+
+            return 1
+          }
+
+          fetch_with_retry "$MARINE_URL" /tmp/cache/marine.json
+          fetch_with_retry "$WEATHER_URL" /tmp/cache/weather.json
+
+      - name: Publicar cache no branch forecast-cache
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin forecast-cache:forecast-cache || true
+
+          if git show-ref --verify --quiet refs/heads/forecast-cache; then
+            git checkout forecast-cache
+          else
+            git checkout --orphan forecast-cache
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p data
+          cp /tmp/cache/marine.json data/marine.json
+          cp /tmp/cache/weather.json data/weather.json
+
+          printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > data/updated-at.txt
+
+          git add data/
+          git diff --cached --quiet && exit 0
+
+          git commit -m "Atualizar cache das previsões"
+          git push origin forecast-cache

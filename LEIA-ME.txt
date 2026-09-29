@@ -1,0 +1,27 @@
+# Estabilização Easyspearfishing
+
+Esta correção resolve o problema de o `/api/spots` ficar em 502 quando o Open-Meteo devolve 429.
+
+## O que muda
+
+- `server/fetch-guard.js` tenta primeiro Open-Meteo.
+- Em 429/5xx/erro, procura automaticamente o último snapshot no branch `forecast-cache`.
+- O branch `forecast-cache` é atualizado de 30 em 30 minutos pelo GitHub Actions.
+- O cache sobrevive aos restarts/spin-down do Render Free porque fica no GitHub.
+- Se houver `OPEN_METEO_API_KEY`, o mesmo código usa o endpoint comercial dedicado.
+- Não mexe no score, período, energia, frontend ou spots.
+
+## Instalação
+
+1. Substituir `server/fetch-guard.js` pelo ficheiro deste pacote.
+2. Criar `.github/workflows/update-forecast.yml` com o ficheiro deste pacote.
+3. Fazer commit/push.
+4. Ir a GitHub > Actions > "Atualizar cache das previsões" > Run workflow uma vez.
+5. Confirmar que aparece o branch `forecast-cache` com:
+   - `data/marine.json`
+   - `data/weather.json`
+6. Fazer novo deploy do Render.
+
+O workflow usa apenas `GITHUB_TOKEN` com `contents: write`.
+
+Depois disto, mesmo que o Open-Meteo dê 429 no Render, o servidor consegue responder usando o último snapshot persistente.
