@@ -11,6 +11,18 @@ const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || process.en
 const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SECRET_KEY);
 
 app.use(express.json({limit:'32kb'}));
+
+app.use((req,res,next)=>{
+  const origin=String(req.headers.origin||'');
+  const allowed=!origin || /^https:\/\/(easyspearfishing-web|easyspearfishing)\.onrender\.com$/.test(origin);
+  if(allowed) res.setHeader('Access-Control-Allow-Origin',origin||'*');
+  res.setHeader('Vary','Origin');
+  res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+  if(req.method==='OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use((req,res,next)=>{
   res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma','no-cache');
