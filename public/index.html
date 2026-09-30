@@ -36,9 +36,75 @@ row{display:flex;gap:8px;flex-wrap:wrap}.chip{background:var(--soft);border:1px 
 footer{color:var(--muted);font-size:12px;padding:5px 0 30px}
 @media(max-width:950px){.dashboard{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.communityGrid{grid-template-columns:1fr}}
 @media(max-width:600px){.wrap{padding:11px}.heroTop{align-items:flex-start;min-height:88px}.brandLogo{width:min(100%,430px);height:70px}.brandTagline{font-size:11px}.grid{grid-template-columns:1fr}.dashboard{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}.bigScore{font-size:28px}h1{font-size:26px}}
+<style>
+#startupOverlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(180deg,#043b55,#075e78);
+  color:#fff;
+  text-align:center;
+  padding:24px;
+}
+.startupBox{
+  width:min(420px,92vw);
+  background:rgba(0,25,40,.35);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:22px;
+  padding:28px;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.startupTitle{
+  font-size:28px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.startupText{
+  opacity:.9;
+  line-height:1.5;
+}
+.startupBar{
+  height:6px;
+  background:rgba(255,255,255,.2);
+  border-radius:99px;
+  overflow:hidden;
+  margin:22px 0 12px;
+}
+.startupBar i{
+  display:block;
+  width:40%;
+  height:100%;
+  background:#fff;
+  border-radius:99px;
+  animation:startupMove 1.2s infinite ease-in-out;
+}
+@keyframes startupMove{
+  0%{transform:translateX(-120%)}
+  100%{transform:translateX(360%)}
+}
+#startupRetry{
+  display:none;
+  margin-top:14px;
+}
 </style>
 </head>
 <body>
+
+<div id="startupOverlay">
+  <div class="startupBox">
+    <div class="startupTitle">🌊 Easyspearfishing</div>
+    <div id="startupText" class="startupText">A preparar as condições do mar…</div>
+    <div class="startupBar"><i></i></div>
+    <div id="startupSub" class="startupText" style="font-size:13px">
+      A ligar aos dados em tempo real.
+    </div>
+    <button id="startupRetry" class="btn primary">Tentar novamente</button>
+  </div>
+</div>
+
 <header class="hero"><div class="wrap heroTop">
 <div class="brandBlock"><img class="brandLogo" src="/easyspearfishing_logo.png?rev=4" alt="Easyspearfishing — pesca submarina"><p class="brandTagline">Condições · previsão · visibilidade real de pesca submarina</p></div><div class="updated" id="updated">A carregar…</div>
 </div></header>
@@ -224,7 +290,7 @@ async function submitObs(e){
   const payload=Object.fromEntries(f.entries());payload.spot=selected.name;
   payload.visibility=Number(payload.visibility);payload.conditions=Number(payload.conditions);payload.clarity=Number(payload.clarity);payload.fishActivity=Number(payload.fishActivity);
   try{
-    const r=await fetch('/api/observations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const r=await fetch(API_BASE+'/api/observations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const j=await r.json(); if(!r.ok)throw new Error(j.error||'Erro');
     $('#formMsg').textContent=j.persistent?'Observação guardada permanentemente no Supabase.':'Observação guardada apenas localmente.';
     await load(false); selected=spots.find(x=>x.name===payload.spot); renderDetail();
@@ -238,22 +304,89 @@ async function registerAnonymousVisit(){
     if(localStorage.getItem(key)) return;
     let visitorId=localStorage.getItem('es_visitor_id');
     if(!visitorId){ visitorId=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now()); localStorage.setItem('es_visitor_id',visitorId); }
-    await fetch('/api/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId})});
+    await fetch(API_BASE+'/api/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId})});
     localStorage.setItem(key,'1');
   }catch(e){}
 }
 
-async function load(force=false){
-  const r=await fetch('/api/spots?'+(force?'force=1&':'' )+'t='+Date.now(),{cache:'no-store'});
-  if(!r.ok)throw new Error('API '+r.status);
-  const j=await r.json();spots=j.spots||[];renderStats();renderSpots();
-  if(selected){const s=spots.find(x=>x.name===selected.name);selected=s||null;renderDetail()}
-  else if(spots.length) {selected=spots.find(x=>x.name==='Marreco')||spots[0];renderSpots();renderDetail()}
+const API_BASE='https://easyspearfishing.onrender.com';
+
+function startup(msg,sub){
+  const o=document.getElementById('startupOverlay');
+  if(!o)return;
+  document.getElementById('startupText').textContent=msg;
+  document.getElementById('startupSub').textContent=sub||'';
 }
-$$('.filter').forEach(b=>b.onclick=()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderSpots()});
+
+function hideStartup(){
+  const o=document.getElementById('startupOverlay');
+  if(o)o.style.display='none';
+}
+
+async function load(force=false){
+  const r=await fetch(API_BASE+'/api/spots?'+(force?'force=1&':'')+'t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('API '+r.status);
+  const j=await r.json();
+  spots=j.spots||[];
+  renderStats();
+  renderSpots();
+  if(selected){
+    const s=spots.find(x=>x.name===selected.name);
+    selected=s||null;
+    renderDetail();
+  }else if(spots.length){
+    selected=spots.find(x=>x.name==='Marreco')||spots[0];
+    renderSpots();
+    renderDetail();
+  }
+}
+
+$$('.filter').forEach(b=>b.onclick=()=>{
+  $$('.filter').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  filter=b.dataset.filter;
+  renderSpots();
+});
+
 $('#refresh').onclick=()=>load(true).catch(e=>alert('Erro a atualizar: '+e.message));
-registerAnonymousVisit();
-load(false).catch(e=>{$('#spots').innerHTML='<div class="errorBox">Não foi possível carregar os dados: '+esc(e.message)+'</div>'});
+
+async function boot(){
+  const retry=document.getElementById('startupRetry');
+
+  for(let attempt=1;attempt<=20;attempt++){
+    try{
+      startup(
+        attempt===1?'A preparar as condições do mar…':'O servidor está a acordar…',
+        attempt===1?'A ligar aos dados em tempo real.':'Isto pode demorar alguns segundos. Não é necessário recarregar a página.'
+      );
+
+      await registerAnonymousVisit();
+      await load(false);
+
+      hideStartup();
+      return;
+
+    }catch(e){
+      if(attempt===20){
+        startup(
+          'O servidor ainda não respondeu.',
+          'Podes tentar novamente sem recarregar a página.'
+        );
+
+        retry.style.display='inline-block';
+        retry.onclick=()=>{
+          retry.style.display='none';
+          boot();
+        };
+        return;
+      }
+
+      await new Promise(r=>setTimeout(r,3000));
+    }
+  }
+}
+
+boot();
 </script>
 </body>
 </html>
